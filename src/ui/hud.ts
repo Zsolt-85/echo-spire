@@ -7,6 +7,7 @@ export function renderHud(s:GameState):void{
   txt('hud-hull',`${Math.max(0,Math.ceil(s.hull))}/${s.maxHull}`);
   txt('hud-flux',String(Math.floor(s.flux)));
   txt('hud-essence',String(s.essence??0));
+  txt('hud-cores',String(s.cores??0));
   txt('cost-dmg',String(upgradeCost('dmg',lv['dmg']??0)));
   txt('cost-rate',String(upgradeCost('rate',lv['rate']??0)));
   txt('cost-maxHull',String(upgradeCost('maxHull',lv['maxHull']??0)));

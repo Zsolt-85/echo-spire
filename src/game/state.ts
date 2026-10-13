@@ -1,3 +1,3 @@
 export type Ship={id:number;kind:'dart'|'bomber'|'hex';x:number;y:number;hp:number;dmg:number;speed:number;essence:number;cache?:boolean};
-export type GameState={wave:number;hull:number;maxHull:number;flux:number;dmg:number;rate:number;range:number;ships:Ship[];nextId:number;_acc?:number;essence:number;_surgeWave?:number;_augmentWave?:number;pendingAugment?:string[]|null;augments?:string[]};
-export function freshState():GameState{return {wave:1,hull:500,maxHull:500,flux:0,dmg:12,rate:1,range:180,ships:[],nextId:1,essence:0,pendingAugment:null,augments:[]};}
+export type GameState={wave:number;hull:number;maxHull:number;flux:number;dmg:number;rate:number;range:number;ships:Ship[];nextId:number;_acc?:number;essence:number;cores?:number;levels?:Record<string,number>;_surgeWave?:number;_augmentWave?:number;pendingAugment?:string[]|null;augments?:string[]};
+export function freshState():GameState{return {wave:1,hull:500,maxHull:500,flux:0,dmg:12,rate:1,range:180,ships:[],nextId:1,essence:0,cores:0,levels:{},pendingAugment:null,augments:[]};}
