@@ -6,7 +6,12 @@ describe('combat',()=>{
     expect(s.ships.length).toBeGreaterThan(0);
     const n=s.ships.length;
     for(let i=0;i<600;i++) tickSim(s,1/60);
-    expect(s.flux+s.hull).toBeGreaterThan(0); expect(s.ships.length).toBeLessThanOrEqual(n);
+    // Balance-agnostic: kills must pay flux, and the sim must make progress
+    // (wave advances, ships thin out, or hull takes contact damage). The old
+    // ships.length<=n bound assumed wave 1 survives the full 600 ticks, which
+    // the retuned (weaker) early game no longer guarantees.
+    expect(s.flux).toBeGreaterThan(0);
+    expect(s.wave>1||s.ships.length<n||s.hull<s.maxHull).toBe(true);
   });
   it('ranged fire accumulates across ticks and grants flux without contact',()=>{
     const s=freshState();

@@ -2,19 +2,29 @@
 // assert the first-run wall lands at waves 80-120. Logs progress + verdict.
 //
 // Fidelity contract: this file MIRRORS (not re-tunes) the shipped formulas:
-// - enemyHp/enemyDmg/costFor: verbatim copies of src/sim/balance.ts
+// - enemyHp/enemyDmg/costFor/BASE/OFFLINE_*: verbatim copies of
+//   src/sim/balance.ts (single tuning source, plan Global Constraint)
 // - spawnWave: verbatim copy of src/game/spawning.ts
 // - tickSim: verbatim copy of src/game/update.ts, INCLUDING the Task 2
-//   firing fix (per-state _acc accumulator: shots = _acc + rate*dt).
-//   Without the accumulator, ranged DPS is ~0 and the wall reads artificially
-//   early — the accumulator MUST stay for an honest measurement.
+//   firing fix (per-state _acc accumulator: shots = _acc + rate*dt)
+//   AND the fix-wave contact-chip flux award (chip kills grant 6+wave,
+//   same as ranged kills). Without the accumulator, ranged DPS is ~0 and
+//   the wall reads artificially early — the accumulator MUST stay for an
+//   honest measurement.
 // - maybeSpawnSurge: verbatim copy of src/game/rifts.ts (cache ship hp
-//   200+wave*20, essence 15, every 5th wave >= 10, once per wave)
+//   200+wave*20, essence 15, every 5th wave >= 10, once per wave, rift
+//   round-robin floor(wave/15)%RIFT_POS.length)
 // - augment auto-pick every 10th wave >= 10: 'Split rounds' dmg boost,
 //   same effect as applyAugment() in src/game/rifts.ts
 // - forge auto-buy: same costs/effects as buyUpgrade() in src/ui/panel.ts
-//   (BASE dmg 20/1.32, rate 30/1.4, maxHull 25/1.35; dmg*1.12+2 rounded,
-//   rate+0.08, maxHull*1.1+50 rounded with full heal on buy).
+//   (BASE imported from balance.ts: dmg 15/1.24, rate 22/1.28,
+//   maxHull 20/1.26; dmg*1.12+2 rounded, rate+0.08, maxHull*1.1+50
+//   rounded with full heal on buy).
+// Tuning history: committed 1.18/1.12 curves walled at wave 7; even flat
+// exponentials walled at 12 (wave^2.1 + spawn-count growth outscale
+// log-grown forge DPS), enemy-only retunes peaked ~59. Easing forge costs
+// alongside the enemy nerf lands the wall mid-window (verified 83-104
+// across 9 policy/augment variants, no stall trips).
 // The only judgement call is the PLAYER POLICY (a first-run player who
 // actively spends flux each wave clear): buy the cheapest affordable upgrade
 // (tie-break dmg > rate > maxHull) until nothing is affordable.
@@ -27,8 +37,8 @@ const TICKS_PER_WAVE_CAP = 60 * 600; // 10 sim-minutes/wave stall guard
 
 // --- src/sim/balance.ts (verbatim) ---
 function costFor(base, growth, level) { return Math.round(base * Math.pow(growth, level)); }
-function enemyHp(wave) { return Math.round(12 * Math.pow(1.18, wave) + Math.pow(wave, 2.1)); }
-function enemyDmg(wave) { return Math.round(3 * Math.pow(1.12, wave) * 10) / 10; }
+function enemyHp(wave) { return Math.round(10 * Math.pow(1.05, wave) + Math.pow(wave, 1.25)); }
+function enemyDmg(wave) { return Math.round(2 * Math.pow(1.025, wave) * 10) / 10; }
 
 // --- src/game/state.ts freshState (verbatim values) ---
 function freshState() {
@@ -53,7 +63,8 @@ function maybeSpawnSurge(s) {
   if (s.wave < 10 || s.wave % 5 !== 0) return false;
   if (s._surgeWave === s.wave) return false;
   s._surgeWave = s.wave;
-  s.ships.push({ id: s.nextId++, kind: 'hex', x: RIFT_POS[0][0], y: RIFT_POS[0][1],
+  const rp = RIFT_POS[Math.floor(s.wave / 15) % RIFT_POS.length];
+  s.ships.push({ id: s.nextId++, kind: 'hex', x: rp[0], y: rp[1],
     hp: 200 + s.wave * 20, dmg: 0, speed: 14, essence: 15, cache: true });
   return true;
 }
@@ -80,14 +91,15 @@ function tickSim(s, dt) {
   for (const sh of s.ships) {
     const dx = 280 - sh.x, dy = 280 - sh.y, d = Math.hypot(dx, dy) || 1;
     sh.x += dx / d * sh.speed * dt; sh.y += dy / d * sh.speed * dt;
-    if (d < 26) { s.hull -= sh.dmg * dt * 2; sh.hp -= s.dmg * dt * 0.5; }
+    if (d < 26) { s.hull -= sh.dmg * dt * 2; const alive = sh.hp > 0; sh.hp -= s.dmg * dt * 0.5;
+      if (alive && sh.hp <= 0) { s.flux += 6 + s.wave; if (sh.cache) s.essence += sh.essence; } }
   }
   s.ships = s.ships.filter(x => x.hp > 0);
   if (s.ships.length === 0) { s.wave += 1; }
 }
 
-// --- src/ui/panel.ts costs/effects (verbatim values) ---
-const BASE = { dmg: { base: 20, growth: 1.32 }, rate: { base: 30, growth: 1.4 }, maxHull: { base: 25, growth: 1.35 } };
+// --- src/ui/panel.ts costs/effects (verbatim values, BASE from balance.ts) ---
+const BASE = { dmg: { base: 15, growth: 1.24 }, rate: { base: 22, growth: 1.28 }, maxHull: { base: 20, growth: 1.26 } };
 function upgradeCost(stat, lvl) { return costFor(BASE[stat].base, BASE[stat].growth, lvl); }
 function buyUpgrade(s, stat) {
   const lvl = s.levels[stat] ?? 0; const c = upgradeCost(stat, lvl);

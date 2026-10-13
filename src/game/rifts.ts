@@ -1,11 +1,14 @@
 import type {GameState} from './state.js';
 export const RIFT_POS=[[70,70],[490,120],[90,470]] as const;
 export const AUGMENT_CHOICES=['Split rounds +1 bounce','Crit surge +10%','Halo thorns'] as const;
+// Spec §2: rift positions rotate every 15 waves (round-robin over RIFT_POS).
+export function riftIndexForWave(wave:number):number{return Math.floor(wave/15)%RIFT_POS.length;}
 export function maybeSpawnSurge(s:GameState):boolean{
   if(s.wave<10||s.wave%5!==0) return false;
   if(s._surgeWave===s.wave) return false;
   s._surgeWave=s.wave;
-  s.ships.push({id:s.nextId++,kind:'hex',x:RIFT_POS[0][0],y:RIFT_POS[0][1],hp:200+s.wave*20,dmg:0,speed:14,essence:15,cache:true});
+  const rp=RIFT_POS[riftIndexForWave(s.wave)];
+  s.ships.push({id:s.nextId++,kind:'hex',x:rp[0],y:rp[1],hp:200+s.wave*20,dmg:0,speed:14,essence:15,cache:true});
   return true;
 }
 export function offerAugment():string[]{return [...AUGMENT_CHOICES];}

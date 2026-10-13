@@ -19,7 +19,7 @@ try{
     if(typeof saved.range==='number')s.range=saved.range;
   }
 }catch{/* corrupt save: fresh start, backup preserved by loadGame */}
-const loop=startLoop(cv,(dt)=>tickSim(s,dt),()=>{ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,performance.now());ctx.restore();renderHud(s);});
+const loop=startLoop(cv,(dt)=>tickSim(s,dt),()=>{ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,performance.now(),s);ctx.restore();renderHud(s);});
 function wire(id:string,fn:()=>void){const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{fn();renderHud(s);});}
 wire('buy-dmg',()=>{buyUpgrade(s,'dmg');});
 wire('buy-rate',()=>{buyUpgrade(s,'rate');});

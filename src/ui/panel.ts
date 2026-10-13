@@ -1,6 +1,8 @@
-import {costFor} from '../sim/balance.js';import type {GameState} from '../game/state.js';
+import {costFor,BASE} from '../sim/balance.js';import type {GameState} from '../game/state.js';
 export type Stat='dmg'|'rate'|'maxHull';
-export const BASE:Record<Stat,{base:number;growth:number}>={dmg:{base:20,growth:1.32},rate:{base:30,growth:1.4},maxHull:{base:25,growth:1.35}};
+// Canonical tuning lives in balance.ts (plan Global Constraint); re-exported
+// here so existing imports keep working.
+export {BASE};
 type WithLevels=GameState&{levels?:Record<string,number>};
 export function upgradeCost(stat:Stat,lvl:number):number{return costFor(BASE[stat].base,BASE[stat].growth,lvl);}
 export function buyUpgrade(s:GameState,stat:Stat):boolean{

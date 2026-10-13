@@ -1,7 +1,9 @@
+import {OFFLINE_CAP_HRS,OFFLINE_FLUX_PER_HR} from '../sim/balance.js';
+// Canonical tuning lives in balance.ts (plan Global Constraint); re-exported
+// here so existing imports keep working.
+export {OFFLINE_CAP_HRS,OFFLINE_FLUX_PER_HR};
 export const SAVE_KEY = 'echospire.save.v1';
 export const SAVE_VERSION = 1;
-export const OFFLINE_CAP_HRS = 12;
-export const OFFLINE_FLUX_PER_HR = 120;
 
 export interface SaveData {
   v: number;

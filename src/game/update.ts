@@ -9,7 +9,8 @@ export function tickSim(s:GameState,dt:number){
     if((t.x-280)**2+(t.y-280)**2<=s.range**2){t.hp-=s.dmg;if(t.hp<=0){s.flux+=6+s.wave;if(t.cache)s.essence+=t.essence;s.ships.shift();}}}
   s._acc=shots;
   for(const sh of s.ships){const dx=280-sh.x,dy=280-sh.y,d=Math.hypot(dx,dy)||1;sh.x+=dx/d*sh.speed*dt;sh.y+=dy/d*sh.speed*dt;
-    if(d<26){s.hull-=sh.dmg*dt*2;sh.hp-=s.dmg*dt*0.5;}}
+    if(d<26){s.hull-=sh.dmg*dt*2;const alive=sh.hp>0;sh.hp-=s.dmg*dt*0.5;
+      if(alive&&sh.hp<=0){s.flux+=6+s.wave;if(sh.cache)s.essence+=sh.essence;}}}
   s.ships=s.ships.filter(x=>x.hp>0);
   if(s.ships.length===0){s.wave+=1;}
 }
