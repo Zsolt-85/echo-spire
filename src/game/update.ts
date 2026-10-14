@@ -1,5 +1,7 @@
 import type {GameState} from './state.js';import {isDead} from './lifecycle.js';import {spawnWave} from './spawning.js';import {maybeSpawnSurge,offerAugment} from './rifts.js';export {freshState} from './state.js';export {spawnWave} from './spawning.js';
 export function tickSim(s:GameState,dt:number){
+  s.fx=s.fx??[];
+  const pushFx=(e:{kind:'beam'|'spark'|'flash';x:number;y:number;tx:number;ty:number;ttl:number})=>{s.fx!.push(e);if(s.fx!.length>60)s.fx!.splice(0,s.fx!.length-60);};
   if(s.ships.length===0){spawnWave(s);maybeSpawnSurge(s);
     if(s.wave>=10&&s.wave%10===0&&s._augmentWave!==s.wave&&!s.pendingAugment){s.pendingAugment=offerAugment();s._augmentWave=s.wave;}}
   // mothership fire: nearest in range, volley/crit/bounce
@@ -16,18 +18,21 @@ export function tickSim(s:GameState,dt:number){
       let dmg=s.dmg;
       if(Math.random()<(s.critCh??0))dmg*=2;
       t.hp-=dmg;hits++;
-      if(t.hp<=0){s.flux+=6+s.wave;s.fluxEarned=(s.fluxEarned??0)+6+s.wave;s.kills=(s.kills??0)+1;if(t.cache){const e=t.essence*essenceMult;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}
+      pushFx({kind:'beam',x:280,y:280,tx:t.x,ty:t.y,ttl:0.12});
+      if(t.hp<=0){pushFx({kind:'spark',x:t.x,y:t.y,tx:t.x,ty:t.y,ttl:0.3});s.flux+=6+s.wave;s.fluxEarned=(s.fluxEarned??0)+6+s.wave;s.kills=(s.kills??0)+1;if(t.cache){const e=t.essence*essenceMult;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}
         const chains=Math.floor((s.bounce??0)/2);
         for(let c=0;c<chains;c++){let best:null|typeof t=null;let bestD=Infinity;
           for(const o of s.ships){if(o===t||o.hp<=0)continue;const d2=(o.x-280)**2+(o.y-280)**2;if(d2<bestD){bestD=d2;best=o;}}
           if(!best)break;best.hp-=s.dmg*0.5;
-          if(best.hp<=0){s.flux+=6+s.wave;s.fluxEarned=(s.fluxEarned??0)+6+s.wave;s.kills=(s.kills??0)+1;if(best.cache){const e=best.essence*essenceMult;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}}}}
+          if(best.hp<=0){pushFx({kind:'spark',x:best.x,y:best.y,tx:best.x,ty:best.y,ttl:0.3});s.flux+=6+s.wave;s.fluxEarned=(s.fluxEarned??0)+6+s.wave;s.kills=(s.kills??0)+1;if(best.cache){const e=best.essence*essenceMult;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}}}}
     }
     if(s.ships.some(x=>x.hp<=0))s.ships=s.ships.filter(x=>x.hp>0);}
   s._acc=shots;
   for(const sh of s.ships){const dx=280-sh.x,dy=280-sh.y,d=Math.hypot(dx,dy)||1;sh.x+=dx/d*sh.speed*dt;sh.y+=dy/d*sh.speed*dt;
-    if(d<26){s.hull-=sh.dmg*dt*2;const alive=sh.hp>0;sh.hp-=s.dmg*dt*0.5;
-      if(alive&&sh.hp<=0){s.flux+=6+s.wave;s.fluxEarned=(s.fluxEarned??0)+6+s.wave;s.kills=(s.kills??0)+1;if(sh.cache){const em=(s as unknown as {_essenceMult?:number})._essenceMult??1;const e=sh.essence*em;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}}}}
+    if(d<26){s.hull-=sh.dmg*dt*2;
+      if(!s.fx!.some(e=>e.kind==='flash'))pushFx({kind:'flash',x:280,y:280,tx:280,ty:280,ttl:0.15});
+      const alive=sh.hp>0;sh.hp-=s.dmg*dt*0.5;
+      if(alive&&sh.hp<=0){pushFx({kind:'spark',x:sh.x,y:sh.y,tx:sh.x,ty:sh.y,ttl:0.3});s.flux+=6+s.wave;s.fluxEarned=(s.fluxEarned??0)+6+s.wave;s.kills=(s.kills??0)+1;if(sh.cache){const em=(s as unknown as {_essenceMult?:number})._essenceMult??1;const e=sh.essence*em;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}}}}
   s.ships=s.ships.filter(x=>x.hp>0);
   s.hull=Math.min(s.maxHull,s.hull+(s.regen??0)*dt);
   s.hull=Math.max(0,s.hull); s.timeS=(s.timeS??0)+dt;

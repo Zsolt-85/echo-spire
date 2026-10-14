@@ -24,7 +24,8 @@ try{
 let best=1;
 try{const sv:any=loadGame();if(sv){if(typeof sv.best==='number')best=Math.floor(sv.best);else if(typeof sv.wave==='number'&&sv.wave>=1)best=Math.floor(sv.wave);}}catch{}
 function persist():void{best=Math.max(best,s.wave);try{saveGame({...s,best} as any);}catch{}}
-const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(isDead(s)){const sum=endRun(s);persist();showGameOver(sum);loop.setPaused(true);}},()=>{ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,performance.now(),s);ctx.restore();renderHud(s);});
+let lastDraw:number|null=null;
+const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(isDead(s)){const sum=endRun(s);persist();showGameOver(sum);loop.setPaused(true);}},()=>{const now=performance.now();const dt=Math.min(0.1,(now-(lastDraw??now))/1000);lastDraw=now;ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,now,s,dt);ctx.restore();renderHud(s);});
 function wire(id:string,fn:()=>void){const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{fn();renderHud(s);});}
 wire('buy-dmg',()=>{buyUpgrade(s,'dmg');});
 wire('buy-rate',()=>{buyUpgrade(s,'rate');});
