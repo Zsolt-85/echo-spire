@@ -29,6 +29,11 @@ function wire(id:string,fn:()=>void){const el=document.getElementById(id);if(el)
 wire('buy-dmg',()=>{buyUpgrade(s,'dmg');});
 wire('buy-rate',()=>{buyUpgrade(s,'rate');});
 wire('buy-maxHull',()=>{buyUpgrade(s,'maxHull');});
+wire('buy-range',()=>{buyUpgrade(s,'range');});
+wire('buy-regen',()=>{buyUpgrade(s,'regen');});
+wire('buy-crit',()=>{buyUpgrade(s,'crit');});
+wire('buy-volley',()=>{buyUpgrade(s,'volley');});
+wire('buy-bounce',()=>{buyUpgrade(s,'bounce');});
 for(const st of WORKSHOP_STATS){wire(`btn-ws-${st}`,()=>{if(buyWorkshop(s,st))persist();});}
 wire('btn-speed-1',()=>loop.setSpeed(1));
 wire('btn-speed-2',()=>loop.setSpeed(2));

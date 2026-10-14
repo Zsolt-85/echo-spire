@@ -3,7 +3,8 @@
 //
 // Fidelity contract: this file MIRRORS (not re-tunes) the shipped formulas:
 // - enemyHp/enemyDmg/costFor/BASE/OFFLINE_*: verbatim copies of
-//   src/sim/balance.ts (single tuning source, plan Global Constraint)
+//   src/sim/balance.ts (single tuning source, plan Global Constraint;
+//   8-track forge + 12-track workshop BASE, Task 2 roster)
 // - spawnWave: verbatim copy of src/game/spawning.ts
 // - tickSim: verbatim copy of src/game/update.ts, INCLUDING the Task 2
 //   firing fix (per-state _acc accumulator: shots = _acc + rate*dt)

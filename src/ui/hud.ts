@@ -1,7 +1,7 @@
 import type {GameState} from '../game/state.js';import {upgradeCost, type Stat} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost, type WorkshopStat} from '../state/workshop.js';
 import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
-const FORGE_STATS:Stat[]=['dmg','rate','maxHull'];
+const FORGE_STATS:Stat[]=['dmg','rate','maxHull','range','regen','crit','volley','bounce'];
 function setAfford(cardId:string,btnId:string,afford:boolean):void{
   const card=document.getElementById(cardId);
   if(card){card.classList.toggle('afford',afford);card.classList.toggle('dim',!afford);}
