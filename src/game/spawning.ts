@@ -10,3 +10,7 @@ export function spawnWave(s:GameState){
       behavior:id%3===2?'roamer':'seeker',wander:Math.random()*Math.PI*2});}
   s._queue=budget-released;s._timer=0;
 }
+export type WaveIntel = { count: number; hp: number; dmg: number; speed: number };
+export function waveIntel(wave: number): WaveIntel {
+  return { count: 4 + Math.floor(wave * 0.7), hp: enemyHp(wave), dmg: enemyDmg(wave), speed: 22 + wave * 0.4 };
+}

@@ -1,4 +1,5 @@
 import type {GameState} from '../game/state.js';import {upgradeCost, type Stat} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost, type WorkshopStat} from '../state/workshop.js';
+import {waveIntel} from '../game/spawning.js';
 import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
 const FORGE_STATS:Stat[]=['dmg','rate','maxHull','range','regen','crit','volley','bounce'];
@@ -38,6 +39,11 @@ export function renderHud(s:GameState):void{
     txt(`card-ws-next-${st}`,d.next(s));
     txt(`card-ws-blurb-${st}`,`Lv ${lvl} • ${workshopCost(st as WorkshopStat,lvl)} cores`);
     setAfford(`card-ws-${st}`,`btn-ws-${st}`,(s.cores??0)>=workshopCost(st as WorkshopStat,lvl));
+  }
+  {
+    const w = waveIntel(s.wave);
+    const hp = w.hp >= 10000 ? (w.hp / 1000).toFixed(1) + 'K' : String(w.hp);
+    txt('hud-intel', `${w.count} ships • ${hp} HP • ${w.dmg} dmg`);
   }
   renderAugmentModal(s);
 }
