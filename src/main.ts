@@ -36,9 +36,11 @@ wire('buy-crit',()=>{buyUpgrade(s,'crit');});
 wire('buy-volley',()=>{buyUpgrade(s,'volley');});
 wire('buy-bounce',()=>{buyUpgrade(s,'bounce');});
 for(const st of WORKSHOP_STATS){wire(`btn-ws-${st}`,()=>{if(buyWorkshop(s,st))persist();});}
-wire('btn-speed-1',()=>loop.setSpeed(1));
-wire('btn-speed-2',()=>loop.setSpeed(2));
-wire('btn-speed-4',()=>loop.setSpeed(4));
+function markSpeed(id:string){for(const b of ['btn-speed-1','btn-speed-2','btn-speed-4']){const e=document.getElementById(b);if(e)e.classList.toggle('on',b===id);}}
+wire('btn-speed-1',()=>{loop.setSpeed(1);markSpeed('btn-speed-1');});
+wire('btn-speed-2',()=>{loop.setSpeed(2);markSpeed('btn-speed-2');});
+wire('btn-speed-4',()=>{loop.setSpeed(4);markSpeed('btn-speed-4');});
+markSpeed('btn-speed-1');
 wire('btn-collapse',()=>{
   const gained=collapseRun(s);
   if(gained>0){persist();}
