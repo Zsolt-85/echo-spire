@@ -1,7 +1,7 @@
 import type {GameState} from '../game/state.js';import {upgradeCost, type Stat} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost, type WorkshopStat} from '../state/workshop.js';
 import {waveIntel} from '../game/spawning.js';
 import {FORGE_CATS, WS_CATS, getForgeTab, getWsTab} from './tabs.js';
-import {ULT_COST, ULT_CHARGE_MAX, type UltId} from '../sim/balance.js';
+import {ULT_COST, ULT_CHARGE_MAX, fluxForKill, type UltId} from '../sim/balance.js';
 import {ULTS, canFire} from '../game/ultimates.js';
 import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
@@ -25,6 +25,11 @@ export function renderHud(s:GameState):void{
   txt('hud-flux',String(Math.floor(s.flux)));
   txt('hud-essence',String(s.essence??0));
   txt('hud-cores',String(s.cores??0));
+  {
+    const perKill = fluxForKill(s.wave);
+    const perMin = Math.round((s.fluxEarned ?? 0) / Math.max(1, s.timeS ?? 0) * 60);
+    txt('hud-income', `+${perKill}/kill • ${perMin}/min`);
+  }
   txt('menu-cores',String(s.cores??0));
   for(const st of FORGE_STATS){
     const d=describeStat(st);

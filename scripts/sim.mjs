@@ -20,9 +20,9 @@
 // - augment auto-pick every 10th wave >= 10: 'Split rounds' dmg boost,
 //   same effect as applyAugment() in src/game/rifts.ts
 // - forge auto-buy: same costs/effects as buyUpgrade() in src/ui/panel.ts
-//   (BASE imported from balance.ts: dmg 15/1.24, rate 22/1.28,
-//   maxHull 20/1.26; dmg*1.12+2 rounded, rate+0.08, maxHull*1.1+50
-//   rounded with full heal on buy).
+//   (BASE imported from balance.ts: Task 1 grind retune — dmg 30/1.32,
+//   rate 44/1.36, maxHull 40/1.34; dmg*1.12+2 rounded, rate+0.08,
+//   maxHull*1.1+50 rounded with full heal on buy).
 // Tuning history: committed 1.18/1.12 curves walled at wave 7; even flat
 // exponentials walled at 12 (wave^2.1 + spawn-count growth outscale
 // log-grown forge DPS), enemy-only retunes peaked ~59. Easing forge costs
@@ -40,7 +40,8 @@ const TICKS_PER_WAVE_CAP = 60 * 600; // 10 sim-minutes/wave stall guard
 
 // --- src/sim/balance.ts (verbatim) ---
 function costFor(base, growth, level) { return Math.round(base * Math.pow(growth, level)); }
-function enemyHp(wave) { return Math.round(10 * Math.pow(1.05, wave) + Math.pow(wave, 1.25)); }
+function fluxForKill(wave) { return 3 + Math.floor(wave / 2); }
+function enemyHp(wave) { const base = 10 * Math.pow(1.05, wave); const tail = wave <= 40 ? Math.pow(wave, 1.25) : Math.pow(40, 1.25) + (Math.pow(wave, 1.35) - Math.pow(40, 1.35)); return Math.round(base + tail); }
 function enemyDmg(wave) { return Math.round(2 * Math.pow(1.025, wave) * 10) / 10; }
 
 // --- src/game/state.ts freshState (verbatim values) ---
@@ -114,14 +115,14 @@ function tickSim(s, dt) {
       if (Math.random() < (s.critCh ?? 0)) dmg *= 2;
       t.hp -= dmg; hits++;
       if (t.hp <= 0) {
-        s.flux += 6 + s.wave; if (t.cache) s.essence += t.essence * essenceMult;
+        s.flux += fluxForKill(s.wave); if (t.cache) s.essence += t.essence * essenceMult;
         const chains = Math.floor((s.bounce ?? 0) / 2);
         for (let c = 0; c < chains; c++) {
           let best = null, bestD = Infinity;
           for (const o of s.ships) { if (o === t || o.hp <= 0) continue; const d2 = (o.x - 280) ** 2 + (o.y - 280) ** 2; if (d2 < bestD) { bestD = d2; best = o; } }
           if (!best) break;
           best.hp -= s.dmg * 0.5;
-          if (best.hp <= 0) { s.flux += 6 + s.wave; if (best.cache) s.essence += best.essence * essenceMult; }
+          if (best.hp <= 0) { s.flux += fluxForKill(s.wave); if (best.cache) s.essence += best.essence * essenceMult; }
         }
       }
     }
@@ -139,8 +140,8 @@ function tickSim(s, dt) {
     } else {
       sh.x += dx / d * sh.speed * dt; sh.y += dy / d * sh.speed * dt;
     }
-    if (d < 26) { s.hull -= sh.dmg * dt * 2; const alive = sh.hp > 0; sh.hp -= s.dmg * dt * 0.5;
-      if (alive && sh.hp <= 0) { s.flux += 6 + s.wave; if (sh.cache) s.essence += sh.essence * essenceMult; } }
+    if (d < 26) { s.hull -= sh.dmg * dt * 4; const alive = sh.hp > 0; sh.hp -= s.dmg * dt * 0.5;
+      if (alive && sh.hp <= 0) { s.flux += fluxForKill(s.wave); if (sh.cache) s.essence += sh.essence * essenceMult; } }
   }
   s.ships = s.ships.filter(x => x.hp > 0);
   s.hull = Math.min(s.maxHull, s.hull + (s.regen ?? 0) * dt);
@@ -149,7 +150,7 @@ function tickSim(s, dt) {
 }
 
 // --- src/ui/panel.ts costs/effects (verbatim values, BASE from balance.ts) ---
-const BASE = { dmg: { base: 15, growth: 1.24 }, rate: { base: 22, growth: 1.28 }, maxHull: { base: 20, growth: 1.26 }, range: { base: 25, growth: 1.35 }, regen: { base: 30, growth: 1.4 }, crit: { base: 60, growth: 1.5 }, volley: { base: 150, growth: 1.6 }, bounce: { base: 150, growth: 1.6 } };
+const BASE = { dmg: { base: 30, growth: 1.32 }, rate: { base: 44, growth: 1.36 }, maxHull: { base: 40, growth: 1.34 }, range: { base: 50, growth: 1.43 }, regen: { base: 60, growth: 1.48 }, crit: { base: 120, growth: 1.58 }, volley: { base: 300, growth: 1.68 }, bounce: { base: 300, growth: 1.68 } };
 function upgradeCost(stat, lvl) { return costFor(BASE[stat].base, BASE[stat].growth, lvl); }
 function buyUpgrade(s, stat) {
   const lvl = s.levels[stat] ?? 0; const c = upgradeCost(stat, lvl);
