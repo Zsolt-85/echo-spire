@@ -1,5 +1,13 @@
-import type {GameState} from '../game/state.js';import {upgradeCost} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost} from '../state/workshop.js';
+import type {GameState} from '../game/state.js';import {upgradeCost, type Stat} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost, type WorkshopStat} from '../state/workshop.js';
+import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
+const FORGE_STATS:Stat[]=['dmg','rate','maxHull'];
+function setAfford(cardId:string,btnId:string,afford:boolean):void{
+  const card=document.getElementById(cardId);
+  if(card){card.classList.toggle('afford',afford);card.classList.toggle('dim',!afford);}
+  const btn=document.getElementById(btnId) as HTMLButtonElement|null;
+  if(btn){btn.disabled=!afford;btn.classList.toggle('afford',afford);btn.classList.toggle('dim',!afford);}
+}
 export function renderHud(s:GameState):void{
   if(typeof document==='undefined')return;
   const lv=(s as unknown as {levels?:Record<string,number>}).levels??{};
@@ -9,11 +17,28 @@ export function renderHud(s:GameState):void{
   txt('hud-essence',String(s.essence??0));
   txt('hud-cores',String(s.cores??0));
   txt('menu-cores',String(s.cores??0));
-  txt('cost-dmg',String(upgradeCost('dmg',lv['dmg']??0)));
-  txt('cost-rate',String(upgradeCost('rate',lv['rate']??0)));
-  txt('cost-maxHull',String(upgradeCost('maxHull',lv['maxHull']??0)));
+  for(const st of FORGE_STATS){
+    const d=describeStat(st);
+    const lvl=lv[st]??0;
+    txt(`card-name-${st}`,d.name);
+    txt(`card-desc-${st}`,d.desc);
+    txt(`card-cur-${st}`,d.cur(s));
+    txt(`card-next-${st}`,d.next(s));
+    txt(`card-blurb-${st}`,upgradeBlurb(st,lvl));
+    txt(`cost-${st}`,String(upgradeCost(st,lvl)));
+    setAfford(`card-${st}`,`buy-${st}`,s.flux>=upgradeCost(st,lvl));
+  }
   const w=(s as unknown as {workshop?:Record<string,number>}).workshop??{};
-  for(const st of WORKSHOP_STATS){txt(`btn-ws-${st}`,`${st} lv${w[st]??0} (${workshopCost(st,w[st]??0)} cores)`);}
+  for(const st of WORKSHOP_STATS){
+    const d=describeWorkshop(st as WorkshopStat);
+    const lvl=w[st]??0;
+    txt(`card-ws-name-${st}`,d.name);
+    txt(`card-ws-desc-${st}`,d.desc);
+    txt(`card-ws-cur-${st}`,d.cur(s));
+    txt(`card-ws-next-${st}`,d.next(s));
+    txt(`card-ws-blurb-${st}`,`Lv ${lvl} • ${workshopCost(st as WorkshopStat,lvl)} cores`);
+    setAfford(`card-ws-${st}`,`btn-ws-${st}`,(s.cores??0)>=workshopCost(st as WorkshopStat,lvl));
+  }
   renderAugmentModal(s);
 }
 export function renderAugmentModal(s:GameState):void{
