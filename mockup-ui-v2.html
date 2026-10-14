@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ECHO SPIRE - Unique Concept v2</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Inter,system-ui,sans-serif}
+body{background:#070a12;color:#e6edf7;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+.bg{position:fixed;inset:0;background:radial-gradient(800px 400px at 20% 10%,#1a2b5a55,transparent),radial-gradient(700px 500px at 80% 90%,#0e5a6b44,transparent),radial-gradient(500px 300px at 70% 20%,#7c3aed33,transparent);pointer-events:none}
+.top{display:flex;align-items:center;gap:12px;padding:14px 20px;z-index:1}
+.brand{font-weight:900;letter-spacing:3px;font-size:15px;background:linear-gradient(90deg,#7dd3fc,#a78bfa,#f472b6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat{background:rgba(255,255,255,.06);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:7px 14px;font-size:13px}
+.stat b{font-size:15px}
+.layout{display:flex;gap:16px;padding:0 20px 20px;flex:1;z-index:1}
+.arena{flex:1.35;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:24px;position:relative;min-height:560px;overflow:hidden;backdrop-filter:blur(8px)}
+.rift{position:absolute;width:90px;height:90px;border-radius:50%;border:2px solid #f472b6aa;background:radial-gradient(circle,#f472b633,transparent 70%);display:flex;align-items:center;justify-content:center;font-size:11px;color:#f9a8d4;letter-spacing:1px}
+.crystal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center}
+.core{width:90px;height:110px;margin:0 auto;background:linear-gradient(180deg,#bae6fd,#38bdf8 40%,#7c3aed);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);box-shadow:0 0 60px #38bdf8aa;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.orbit{position:absolute;left:50%;top:50%;border:1px solid rgba(125,211,252,.25);border-radius:50%;transform:translate(-50%,-50%)}
+.o1{width:200px;height:200px;animation:spin 12s linear infinite}.o2{width:300px;height:300px;animation:spin 20s linear infinite reverse}.o3{width:400px;height:400px;border-style:dashed;opacity:.4}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.dot{position:absolute;width:14px;height:14px;border-radius:50%;background:#a78bfa;box-shadow:0 0 12px #a78bfa}
+.side{flex:.75;display:flex;flex-direction:column;gap:12px;min-width:360px}
+.card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:14px 16px;backdrop-filter:blur(14px)}
+.card h3{font-size:12px;letter-spacing:2px;color:#7dd3fc;margin-bottom:10px}
+.up{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.up:last-child{border:none}
+.up small{color:#94a3b8;font-size:12px}
+.btn{background:linear-gradient(90deg,#38bdf8,#818cf8);border:none;color:#04121f;font-weight:800;border-radius:12px;padding:9px 14px;cursor:pointer}
+.echo{border:1px solid #a78bfa66;background:linear-gradient(180deg,#a78bfa18,#38bdf808);border-radius:16px;padding:12px}
+.dock{display:flex;gap:10px;justify-content:center;padding:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px}
+.dock button{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#cbd5e1;border-radius:12px;padding:9px 16px;cursor:pointer}
+.dock button.on{background:#fff;color:#0a0f1e;font-weight:800}
+</style></head>
+<body><div class="bg"></div>
+<div class="top"><div class="brand">ECHO SPIRE ◆ v2 CONCEPT</div><div class="stat">Cycle <b>87</b></div><div class="stat">Core Integrity <b>72%</b></div><div class="stat">Flux <b>12.4K</b></div><div class="stat">Echoes <b>2 active</b></div></div>
+<div class="layout">
+<div class="arena">
+<div class="rift" style="left:8%;top:12%">RIFT A</div>
+<div class="rift" style="right:10%;top:20%">RIFT B</div>
+<div class="rift" style="left:15%;bottom:12%">RIFT C</div>
+<div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div>
+<div class="crystal"><div class="core"></div><div style="margin-top:8px;font-size:12px;letter-spacing:2px;color:#7dd3fc">LIVING STAR • LV 42</div></div>
+<div class="dot" style="left:58%;top:38%"></div><div class="dot" style="left:38%;top:60%;background:#38bdf8"></div>
+<div style="position:absolute;left:50%;bottom:18px;transform:translateX(-50%);font-size:12px;color:#64748b">Enemies stream from 3 shifting rifts — not a 360 copy. Position orbits to intercept.</div>
+</div>
+<div class="side">
+<div class="card"><h3>FORGE • IN-CYCLE</h3>
+<div class="up"><div><b>Prism Edge</b><br><small>shard damage • 148 → 162</small></div><button class="btn">Forge</button></div>
+<div class="up"><div><b>Orbit Velocity</b><br><small>0.80s → 0.77s</small></div><button class="btn">Forge</button></div>
+<div class="up"><div><b>Resonance (bounce)</b><br><small>unique: shards chain +1</small></div><button class="btn">Forge</button></div>
+</div>
+<div class="echo"><b>◈ Echo Memory</b><div style="font-size:13px;color:#c4b5fd;margin-top:6px">Past run ghost replaying beside you. This is our Idea-3 hook — no Tower game has this. Stack up to 3 echoes.</div></div>
+<div class="card"><h3>LABORATORY • ALWAYS RESEARCHING</h3><div style="font-size:13px;color:#94a3b8">4 threads • offline progress • infinite levels<br>▓▓▓▓▓░░░ Quantum Focus 14h → +8% flux</div></div>
+<div class="dock"><button>⏸</button><button class="on">x1</button><button>x2</button><button>x4</button><button>Collapse ⏎</button></div>
+</div></div>
+</body></html>

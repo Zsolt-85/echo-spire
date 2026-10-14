@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON SPIRE - UI Mockup v1</title>
+<style>
+  * { box-sizing: border-box; margin:0; padding:0; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body { background:#0a0e14; color:#e2e8f0; min-height:100vh; display:flex; flex-direction:column; }
+  .topbar { display:flex; align-items:center; gap:16px; padding:10px 18px; background:#111927; border-bottom:1px solid #1e293b; }
+  .logo { font-weight:800; letter-spacing:2px; color:#22d3ee; }
+  .pill { background:#1e293b; border:1px solid #334155; border-radius:20px; padding:4px 12px; font-size:13px; }
+  .pill b { color:#fff; }
+  .speed { margin-left:auto; display:flex; gap:6px; align-items:center; }
+  .speed button { background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:8px; padding:6px 12px; cursor:pointer; }
+  .speed button.active { background:#22d3ee; color:#06202a; font-weight:700; border-color:#22d3ee; }
+  .main { display:flex; flex:1; min-height:0; }
+  .arena-wrap { flex:1.2; display:flex; align-items:center; justify-content:center; padding:18px; background: radial-gradient(circle at 50% 50%, #0f1a2b 0%, #0a0e14 70%); }
+  .arena { width:min(520px,90%); aspect-ratio:1; border-radius:18px; background:#0b1220; border:1px solid #1e3a5f; position:relative; overflow:hidden; box-shadow:0 0 80px rgba(34,211,238,0.12) inset; }
+  .grid { position:absolute; inset:0; background-image: linear-gradient(rgba(34,211,238,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,0.06) 1px, transparent 1px); background-size:32px 32px; }
+  .range { position:absolute; left:50%; top:50%; width:70%; aspect-ratio:1; transform:translate(-50%,-50%); border:1px dashed rgba(34,211,238,0.4); border-radius:50%; }
+  .tower { position:absolute; left:50%; top:50%; width:64px; height:64px; transform:translate(-50%,-50%); background: linear-gradient(180deg,#22d3ee,#0ea5e9); clip-path: polygon(50% 0%, 90% 25%, 90% 75%, 50% 100%, 10% 75%, 10% 25%); display:flex; align-items:center; justify-content:center; box-shadow:0 0 30px #22d3ee; }
+  .tower span { font-size:24px; filter:drop-shadow(0 0 4px #000); }
+  .enemy { position:absolute; width:18px; height:18px; border-radius:50%; background:#f43f5e; box-shadow:0 0 12px #f43f5e; font-size:9px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; }
+  .enemy.tank { width:28px; height:28px; background:#fb923c; box-shadow:0 0 14px #fb923c; }
+  .enemy.fast { background:#e879f9; box-shadow:0 0 10px #e879f9; width:14px; height:14px; }
+  .hpbar { position:absolute; left:50%; top:12px; transform:translateX(-50%); width:70%; height:14px; background:#1e293b; border-radius:8px; overflow:hidden; border:1px solid #334155; }
+  .hpbar i { display:block; height:100%; width:72%; background:linear-gradient(90deg,#22c55e,#4ade80); }
+  .panel { flex:0.8; min-width:340px; background:#0f172a; border-left:1px solid #1e293b; display:flex; flex-direction:column; }
+  .tabs { display:flex; gap:6px; padding:12px 12px 0; }
+  .tabs div { flex:1; text-align:center; padding:10px; border-radius:10px 10px 0 0; background:#1e293b; color:#94a3b8; font-size:13px; font-weight:600; cursor:pointer; }
+  .tabs div.active { background:#1a2b45; color:#22d3ee; border-bottom:2px solid #22d3ee; }
+  .content { padding:14px; overflow:auto; }
+  .row { display:flex; justify-content:space-between; align-items:center; background:#162032; border:1px solid #243449; border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .row small { color:#94a3b8; display:block; }
+  .row b { font-size:14px; }
+  .buy { background:#22d3ee; border:none; border-radius:8px; padding:8px 12px; font-weight:700; cursor:pointer; }
+  .perk { border:1px dashed #22d3ee; border-radius:10px; padding:12px; margin-top:12px; background:rgba(34,211,238,0.06); }
+  .note { padding:10px 14px; font-size:12px; color:#64748b; border-top:1px solid #1e293b; }
+  @media(max-width:800px){ .main{flex-direction:column;} .panel{border-left:none; border-top:1px solid #1e293b;} }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">NEON SPIRE</div>
+    <div class="pill">Wave <b>87</b></div>
+    <div class="pill">HP <b>72%</b></div>
+    <div class="pill">Coins <b>12.4K</b></div>
+    <div class="speed"><button>⏸</button><button class="active">x1</button><button>x2</button><button>x4</button></div>
+  </div>
+  <div class="main">
+    <div class="arena-wrap">
+      <div class="arena">
+        <div class="grid"></div>
+        <div class="range"></div>
+        <div class="hpbar"><i></i></div>
+        <div class="tower"><span>⬢</span></div>
+        <div class="enemy" style="left:20%;top:30%">12</div>
+        <div class="enemy fast" style="left:70%;top:22%"></div>
+        <div class="enemy tank" style="left:78%;top:65%">45</div>
+        <div class="enemy" style="left:30%;top:75%">12</div>
+        <div class="enemy fast" style="left:55%;top:15%"></div>
+        <div class="enemy" style="left:15%;top:60%">12</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="tabs"><div class="active">Battle</div><div>Workshop</div><div>Lab 🔬</div></div>
+      <div class="content">
+        <div class="row"><div><b>Damage - Lv 42</b><small>+12 → 148 • cost 850</small></div><button class="buy">Buy</button></div>
+        <div class="row"><div><b>Attack Speed - Lv 31</b><small>0.82s → 0.80s • cost 720</small></div><button class="buy">Buy</button></div>
+        <div class="row"><div><b>Max HP - Lv 38</b><small>4.2K → 4.5K • cost 690</small></div><button class="buy">Buy</button></div>
+        <div class="row"><div><b>Regen - Lv 25</b><small>18/s → 19/s • cost 540</small></div><button class="buy">Buy</button></div>
+        <div class="row"><div><b>Bounce - Lv 3</b><small>NEW vs Tower: hits +1 target</small></div><button class="buy">Buy</button></div>
+        <div class="perk"><b>🎁 Wave 80 Perk - Pick 1:</b><br> [ +15% Crit ] [ +1 Multishot ] [ Thorns Aura ]</div>
+      </div>
+      <div class="note">Minimal dark + neon. Canvas game will look like left arena, but animated: glow tower, particles, damage numbers. Right panel = DOM for crisp clicks.</div>
+    </div>
+  </div>
+</body>
+</html>

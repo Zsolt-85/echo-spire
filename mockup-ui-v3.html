@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEON SPIRE v3 - Familiar layout, unique skin</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Inter,system-ui,sans-serif}
+body{background:#080b13;color:#e8eef7;min-height:100vh;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:10px;padding:12px 18px;background:rgba(15,23,42,.85);backdrop-filter:blur(10px);border-bottom:1px solid #1e293b;position:sticky;top:0;z-index:5}
+.logo{font-weight:900;letter-spacing:2.5px;background:linear-gradient(90deg,#5eead4,#38bdf8,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pill{background:#0f1c30;border:1px solid #23405f;border-radius:999px;padding:6px 14px;font-size:13px;color:#9fb3cc}
+.pill b{color:#fff}
+.speed{margin-left:auto;display:flex;gap:6px}
+.speed button{background:#13253d;color:#8aa0bb;border:1px solid #23405f;border-radius:10px;padding:7px 13px;cursor:pointer}
+.speed button.on{background:#5eead4;color:#04211d;font-weight:800;border-color:#5eead4}
+.main{display:flex;flex:1}
+.stage{flex:1.25;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(600px 400px at 50% 40%,#0e233d 0%,#080b13 70%)}
+.board{width:min(540px,92%);aspect-ratio:1;background:#0a1322;border:1px solid #1c3a5a;border-radius:22px;position:relative;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.5),0 0 60px rgba(94,234,212,.08) inset}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(94,234,212,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(94,234,212,.05) 1px,transparent 1px);background-size:28px 28px;mask-image:radial-gradient(circle at 50% 50%,black 60%,transparent 78%)}
+.hexrange{position:absolute;left:50%;top:50%;width:72%;aspect-ratio:1;transform:translate(-50%,-50%);border:1.5px dashed rgba(94,234,212,.45);clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0% 50%);background:rgba(94,234,212,.03)}
+.spire{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:72px;height:86px;background:linear-gradient(180deg,#d1faf0,#2dd4bf 35%,#0ea5e9 75%,#6366f1);clip-path:polygon(50% 0,92% 22%,92% 72%,50% 100%,8% 72%,8% 22%);box-shadow:0 0 40px rgba(45,212,191,.6);display:flex;align-items:center;justify-content:center}
+.spire:after{content:'⬢';color:#04211d;font-size:26px;font-weight:900}
+.orbiter{position:absolute;left:50%;top:50%;width:140px;height:140px;margin:-70px;border:1px solid rgba(167,139,250,.35);border-radius:50%;animation:spin 10s linear infinite}
+.orbiter i{position:absolute;top:-7px;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#a78bfa;box-shadow:0 0 12px #a78bfa}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mob{position:absolute;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff}
+.mob.sq{width:20px;height:20px;background:#fb7185;transform:rotate(45deg);box-shadow:0 0 12px #fb7185;border-radius:4px}
+.mob.tri{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:20px solid #e879f9;filter:drop-shadow(0 0 8px #e879f9)}
+.mob.hex{width:26px;height:30px;background:#fbbf24;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);box-shadow:0 0 12px #fbbf24;color:#451a03}
+.beam{position:absolute;height:2px;background:linear-gradient(90deg,#5eead4,transparent);transform-origin:left center;opacity:.8}
+.side{flex:.8;min-width:360px;background:#0c1425;border-left:1px solid #1e293b;display:flex;flex-direction:column}
+.tabs{display:flex;gap:6px;padding:12px 12px 0}
+.tabs div{flex:1;text-align:center;padding:11px;border-radius:12px 12px 0 0;background:#101d32;color:#8aa0bb;font-size:13px;font-weight:700;cursor:pointer;border:1px solid #1e3a5a;border-bottom:none}
+.tabs div.on{background:#132845;color:#5eead4}
+.list{padding:14px;overflow:auto;flex:1}
+.item{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);border:1px solid #1d3451;border-radius:14px;padding:11px 12px;margin-bottom:9px}
+.item small{color:#8aa0bb}
+.item b{font-size:14px}
+.buy{background:linear-gradient(90deg,#5eead4,#38bdf8);border:none;border-radius:10px;padding:9px 14px;font-weight:800;cursor:pointer;color:#04211d}
+.perk{margin-top:6px;border:1px dashed #5eead466;background:rgba(94,234,212,.06);border-radius:14px;padding:12px;font-size:13px}
+.foot{padding:10px 14px;font-size:12px;color:#5b6b82;border-top:1px solid #1e293b}
+</style></head>
+<body>
+<div class="top"><div class="logo">ECHO SPIRE</div><div class="pill">Wave <b>87</b></div><div class="pill">HP <b>72%</b></div><div class="pill">Coins <b>12.4K</b></div><div class="speed"><button>⏸</button><button class="on">x1</button><button>x2</button><button>x4</button></div></div>
+<div class="main">
+<div class="stage"><div class="board"><div class="grid"></div><div class="hexrange"></div>
+<div class="beam" style="left:50%;top:50%;width:130px;transform:rotate(-30deg)"></div>
+<div class="beam" style="left:50%;top:50%;width:150px;transform:rotate(40deg)"></div>
+<div class="spire"></div><div class="orbiter"><i></i></div>
+<div class="mob sq" style="left:22%;top:32%">12</div>
+<div class="mob tri" style="left:68%;top:24%"></div>
+<div class="mob hex" style="left:74%;top:62%">45</div>
+<div class="mob sq" style="left:32%;top:74%">12</div>
+<div style="position:absolute;left:50%;top:10px;transform:translateX(-50%);width:68%;height:12px;background:#13253d;border-radius:99px;border:1px solid #23405f;overflow:hidden"><div style="width:72%;height:100%;background:linear-gradient(90deg,#34d399,#a7f3d0)"></div></div>
+</div></div>
+<div class="side"><div class="tabs"><div class="on">Battle</div><div>Workshop</div><div>Lab</div></div>
+<div class="list">
+<div class="item"><div><b>Damage • 42</b><br><small>+12 → 148 • 850c</small></div><button class="buy">Upgrade</button></div>
+<div class="item"><div><b>Attack Speed • 31</b><br><small>0.82s → 0.80s • 720c</small></div><button class="buy">Upgrade</button></div>
+<div class="item"><div><b>Max HP • 38</b><br><small>4.2K → 4.5K • 690c</small></div><button class="buy">Upgrade</button></div>
+<div class="item"><div><b>Regen • 25</b><br><small>18/s → 19/s • 540c</small></div><button class="buy">Upgrade</button></div>
+<div class="item"><div><b>Orbit Blade • 3</b><br><small>unique: orbiting drone +1 target</small></div><button class="buy">Upgrade</button></div>
+<div class="perk"><b>Wave 80 — choose 1:</b> Resonance bounce / Crit surge / Halo thorns</div>
+</div><div class="foot">Same Tower-like mechanics you liked. Unique skin: hex range (not circle), diamond/square/triangle enemies (not dots), prism spire + orbiter, beams. No copied art.</div>
+</div></div>
+</body></html>
