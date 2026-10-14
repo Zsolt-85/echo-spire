@@ -12,8 +12,9 @@ export function restartRun(s:GameState):number {
   const keepWorkshop = s.workshop ?? {};
   const keepLevels = s.levels ?? {};
   const keepEssence = s.essence ?? 0;
-  const fresh = { wave: 1, hull: s.maxHull, flux: 0, ships: [], _acc: 0, kills: 0, fluxEarned: 0, essenceEarned: 0, timeS: 0, pendingAugment: null as null, augments: [] as string[], _surgeWave: undefined as number|undefined, _augmentWave: undefined as number|undefined, _queue: 0, _timer: 0, fx: [] };
+  const keepUlt = s.ult ?? { nova: false, overdrive: false, aegis: false };
+  const fresh = { wave: 1, hull: s.maxHull, flux: 0, ships: [], _acc: 0, kills: 0, fluxEarned: 0, essenceEarned: 0, timeS: 0, pendingAugment: null as null, augments: [] as string[], _surgeWave: undefined as number|undefined, _augmentWave: undefined as number|undefined, _queue: 0, _timer: 0, fx: [] as GameState['fx'], ultCharge: 0, odUntil: 0, aegisUntil: 0 };
   Object.assign(s, fresh);
-  s.workshop = keepWorkshop; s.levels = keepLevels; s.essence = keepEssence;
+  s.workshop = keepWorkshop; s.levels = keepLevels; s.essence = keepEssence; s.ult = keepUlt;
   return gained;
 }

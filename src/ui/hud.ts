@@ -1,9 +1,16 @@
 import type {GameState} from '../game/state.js';import {upgradeCost, type Stat} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost, type WorkshopStat} from '../state/workshop.js';
 import {waveIntel} from '../game/spawning.js';
 import {FORGE_CATS, WS_CATS, getForgeTab, getWsTab} from './tabs.js';
+import {ULT_COST, ULT_CHARGE_MAX, type UltId} from '../sim/balance.js';
+import {ULTS, canFire} from '../game/ultimates.js';
 import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
 const FORGE_STATS:Stat[]=['dmg','rate','maxHull','range','regen','crit','volley','bounce'];
+const ULT_META: Record<UltId, { name: string; desc: string }> = {
+  nova: { name: 'Nova Burst', desc: '10x dmg to every ship on screen' },
+  overdrive: { name: 'Overdrive', desc: 'Rate x3 for 8s' },
+  aegis: { name: 'Aegis', desc: 'Invulnerable for 12s' },
+};
 function setAfford(cardId:string,btnId:string,afford:boolean):void{
   const card=document.getElementById(cardId);
   if(card){card.classList.toggle('afford',afford);card.classList.toggle('dim',!afford);}
@@ -64,6 +71,26 @@ export function renderHud(s:GameState):void{
     for (const c of WS_CATS) {
       const b = document.getElementById(`tab-ws-${c.id}`);
       if (b) b.classList.toggle('on', c.id === wactive.id);
+    }
+    const ultSec = document.getElementById('ws-ultimates');
+    if (ultSec) ultSec.style.display = wactive.id === 'ultimates' ? '' : 'none';
+  }
+  {
+    for (const id of ULTS) {
+      const owned = !!s.ult?.[id];
+      txt(`card-ult-name-${id}`, ULT_META[id].name);
+      txt(`card-ult-desc-${id}`, ULT_META[id].desc);
+      txt(`card-ult-blurb-${id}`, owned ? 'Owned' : `${ULT_COST[id]} essence`);
+      setAfford(`card-ult-${id}`, `btn-ult-${id}`, !owned && (s.essence ?? 0) >= ULT_COST[id]);
+    }
+    const charge = Math.min(ULT_CHARGE_MAX, s.ultCharge ?? 0);
+    const fill = document.getElementById('ult-charge-fill');
+    if (fill) fill.style.width = `${Math.round(charge / ULT_CHARGE_MAX * 100)}%`;
+    txt('ult-charge-label', `${Math.floor(charge)}/${ULT_CHARGE_MAX}`);
+    for (const id of ULTS) {
+      const btn = document.getElementById(`btn-fire-${id}`) as HTMLButtonElement | null;
+      const ready = canFire(s, id);
+      if (btn) { btn.disabled = !ready; btn.classList.toggle('on', ready); }
     }
   }
   renderAugmentModal(s);

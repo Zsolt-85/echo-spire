@@ -1,5 +1,6 @@
 import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
+import {buyUlt,fireUlt,ULTS} from './game/ultimates.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
 function fit(){cv.width=560*devicePixelRatio;cv.height=560*devicePixelRatio;}
@@ -14,6 +15,8 @@ try{
     if(typeof saved.cores==='number')s.cores=saved.cores;
     if(saved.levels&&typeof saved.levels==='object')s.levels=saved.levels;
     if(saved.workshop&&typeof saved.workshop==='object')s.workshop=saved.workshop;
+    {const u=(saved as unknown as {ult?:unknown}).ult;
+    if(u&&typeof u==='object'){const r=u as Record<string,unknown>;s.ult={nova:!!r.nova,overdrive:!!r.overdrive,aegis:!!r.aegis};}}
     if(Array.isArray(saved.augments))s.augments=saved.augments;
     if(typeof saved.maxHull==='number'){s.maxHull=saved.maxHull;s.hull=saved.hull??saved.maxHull;}
     if(typeof saved.dmg==='number')s.dmg=saved.dmg;
@@ -43,6 +46,9 @@ wire('tab-forge-systems',()=>{setForgeTab('systems');});
 wire('tab-ws-offense',()=>{setWsTab('offense');});
 wire('tab-ws-defense',()=>{setWsTab('defense');});
 wire('tab-ws-systems',()=>{setWsTab('systems');});
+wire('tab-ws-ultimates',()=>{setWsTab('ultimates');});
+for(const id of ULTS){wire(`btn-ult-${id}`,()=>{if(buyUlt(s,id))persist();});}
+for(const id of ULTS){wire(`btn-fire-${id}`,()=>{fireUlt(s,id);});}
 function markSpeed(id:string){for(const b of ['btn-speed-1','btn-speed-2','btn-speed-4']){const e=document.getElementById(b);if(e)e.classList.toggle('on',b===id);}}
 wire('btn-speed-1',()=>{loop.setSpeed(1);markSpeed('btn-speed-1');});
 wire('btn-speed-2',()=>{loop.setSpeed(2);markSpeed('btn-speed-2');});

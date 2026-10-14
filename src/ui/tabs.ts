@@ -9,6 +9,7 @@ export const WS_CATS: TabCat[] = [
   { id: 'offense', label: 'Offense', stats: ['dmg', 'rate', 'crit', 'volley', 'bounce'] },
   { id: 'defense', label: 'Defense', stats: ['maxHull', 'bulkhead', 'regen'] },
   { id: 'systems', label: 'Systems', stats: ['range', 'scope', 'essence', 'startFlux'] },
+  { id: 'ultimates', label: 'Ultimates', stats: [] },
 ];
 let forgeTab = 'weapons', wsTab = 'offense';
 const valid = (cats: TabCat[], id: string): boolean => cats.some(c => c.id === id);

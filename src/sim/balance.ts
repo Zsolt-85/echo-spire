@@ -28,3 +28,15 @@ export const LAB_TIME_BASE_S=60;
 export const LAB_TIME_GROWTH=1.6;
 export type WorkshopStat='dmg'|'rate'|'maxHull'|'range'|'regen'|'crit'|'volley'|'bounce'|'essence'|'startFlux'|'bulkhead'|'scope';
 export const WORKSHOP_BASE:Record<WorkshopStat,{base:number;growth:number}>={dmg:{base:1,growth:1.8},rate:{base:2,growth:1.8},maxHull:{base:2,growth:1.8},range:{base:3,growth:1.9},regen:{base:3,growth:1.9},crit:{base:5,growth:2.1},volley:{base:8,growth:2.2},bounce:{base:8,growth:2.2},essence:{base:4,growth:2.0},startFlux:{base:4,growth:2.0},bulkhead:{base:6,growth:2.0},scope:{base:6,growth:2.0}};
+// Ultimates, canonical home (src/game/ultimates.ts consumes). Charge 0-100,
+// +2 per kill, +10 per Cache kill. Unlock for essence: Nova 20, Overdrive 35,
+// Aegis 50. Nova 10x screen hit, Overdrive 8s rate-x3, Aegis 12s invulnerable.
+export const ULT_CHARGE_PER_KILL=2;
+export const ULT_CHARGE_PER_CACHE=10;
+export const ULT_CHARGE_MAX=100;
+export const ULT_COST={nova:20,overdrive:35,aegis:50} as const;
+export type UltId=keyof typeof ULT_COST;
+export const ULT_NOVA_MULT=10;
+export const ULT_OD_MULT=3;
+export const ULT_OD_SECS=8;
+export const ULT_AEGIS_SECS=12;

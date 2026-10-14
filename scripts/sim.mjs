@@ -1,5 +1,7 @@
 // Headless balance check (Task 6, spec §4): simulate up to 1000 waves in Node,
 // assert the first-run wall lands at waves 80-120. Logs progress + verdict.
+// Ultimates (reset/intel/tabs/ultimates Task 4) are excluded from this sim by
+// design: no essence unlocks, no charge, no fire — wall policy unchanged.
 //
 // Fidelity contract: this file MIRRORS (not re-tunes) the shipped formulas:
 // - enemyHp/enemyDmg/costFor/BASE/OFFLINE_*: verbatim copies of
