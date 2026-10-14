@@ -74,6 +74,15 @@ canvas{border:1px solid #1e3a5f;border-radius:8px;position:sticky;top:12px;}
 .card .card-buy.dim{opacity:.6;}
 .card .card-buy:disabled{cursor:not-allowed;}
 .card .card-buy:focus-visible,.card:focus-visible{outline:2px solid var(--neon);outline-offset:2px;}
+.tabbar{display:flex;gap:6px;position:sticky;top:0;background:#05070f;padding:8px 0;z-index:3;}
+.tabbar button{flex:1;min-height:44px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;transition:border-color 200ms ease,box-shadow 200ms ease,background 200ms ease;}
+.tabbar button:hover{border-color:var(--neon);}
+.tabbar button.on{background:linear-gradient(90deg,#5eead4,#38bdf8);color:#04211d;font-weight:700;border-color:transparent;box-shadow:0 0 12px rgba(94,234,212,.45);}
+.menu-sheet .tabbar{top:84px;}
+.menu-danger{margin-top:20px;}
+.menu-danger button{min-height:44px;padding:10px 16px;cursor:pointer;background:rgba(255,255,255,.05);color:#f87171;border:1px solid rgba(248,113,113,.4);border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12px;transition:border-color 200ms ease,box-shadow 200ms ease,background 200ms ease;}
+.menu-danger button:hover{border-color:#f87171;box-shadow:0 0 10px rgba(248,113,113,.35);}
 @media (prefers-reduced-motion:reduce){
   .card,.card .card-buy{transition:none;}
+  .tabbar button,.menu-danger button{transition:none;}
 }

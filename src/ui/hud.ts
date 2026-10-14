@@ -1,5 +1,6 @@
 import type {GameState} from '../game/state.js';import {upgradeCost, type Stat} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost, type WorkshopStat} from '../state/workshop.js';
 import {waveIntel} from '../game/spawning.js';
+import {FORGE_CATS, WS_CATS, getForgeTab, getWsTab} from './tabs.js';
 import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
 const FORGE_STATS:Stat[]=['dmg','rate','maxHull','range','regen','crit','volley','bounce'];
@@ -44,6 +45,26 @@ export function renderHud(s:GameState):void{
     const w = waveIntel(s.wave);
     const hp = w.hp >= 10000 ? (w.hp / 1000).toFixed(1) + 'K' : String(w.hp);
     txt('hud-intel', `${w.count} ships • ${hp} HP • ${w.dmg} dmg`);
+  }
+  {
+    const active = FORGE_CATS.find(c => c.id === getForgeTab()) ?? FORGE_CATS[0];
+    for (const st of FORGE_STATS) {
+      const card = document.getElementById(`card-${st}`);
+      if (card) card.style.display = (active.stats as readonly string[]).includes(st) ? '' : 'none';
+    }
+    for (const c of FORGE_CATS) {
+      const b = document.getElementById(`tab-forge-${c.id}`);
+      if (b) b.classList.toggle('on', c.id === active.id);
+    }
+    const wactive = WS_CATS.find(c => c.id === getWsTab()) ?? WS_CATS[0];
+    for (const st of WORKSHOP_STATS) {
+      const card = document.getElementById(`card-ws-${st}`);
+      if (card) card.style.display = (wactive.stats as readonly string[]).includes(st as string) ? '' : 'none';
+    }
+    for (const c of WS_CATS) {
+      const b = document.getElementById(`tab-ws-${c.id}`);
+      if (b) b.classList.toggle('on', c.id === wactive.id);
+    }
   }
   renderAugmentModal(s);
 }

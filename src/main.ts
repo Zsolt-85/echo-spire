@@ -1,4 +1,5 @@
 import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
+import {setForgeTab,setWsTab} from './ui/tabs.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
 function fit(){cv.width=560*devicePixelRatio;cv.height=560*devicePixelRatio;}
@@ -36,6 +37,12 @@ wire('buy-crit',()=>{buyUpgrade(s,'crit');});
 wire('buy-volley',()=>{buyUpgrade(s,'volley');});
 wire('buy-bounce',()=>{buyUpgrade(s,'bounce');});
 for(const st of WORKSHOP_STATS){wire(`btn-ws-${st}`,()=>{if(buyWorkshop(s,st))persist();});}
+wire('tab-forge-weapons',()=>{setForgeTab('weapons');});
+wire('tab-forge-hull',()=>{setForgeTab('hull');});
+wire('tab-forge-systems',()=>{setForgeTab('systems');});
+wire('tab-ws-offense',()=>{setWsTab('offense');});
+wire('tab-ws-defense',()=>{setWsTab('defense');});
+wire('tab-ws-systems',()=>{setWsTab('systems');});
 function markSpeed(id:string){for(const b of ['btn-speed-1','btn-speed-2','btn-speed-4']){const e=document.getElementById(b);if(e)e.classList.toggle('on',b===id);}}
 wire('btn-speed-1',()=>{loop.setSpeed(1);markSpeed('btn-speed-1');});
 wire('btn-speed-2',()=>{loop.setSpeed(2);markSpeed('btn-speed-2');});
