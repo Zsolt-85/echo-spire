@@ -1,5 +1,4 @@
 // src/ui/tabs.ts — DOM-free store + catalog (guards for headless rendering live in hud.ts):
-import type { Stat } from './panel.js';
 export type TabCat = { id: string; label: string; stats: readonly string[] };
 export const FORGE_CATS: TabCat[] = [
   { id: 'weapons', label: 'Weapons', stats: ['dmg', 'rate', 'crit', 'volley', 'bounce'] },

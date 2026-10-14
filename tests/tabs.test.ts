@@ -21,5 +21,6 @@ describe('tabs', () => {
     setForgeTab('hull'); expect(getForgeTab()).toBe('hull');
     setForgeTab('nope'); expect(getForgeTab()).toBe('hull');
     setWsTab('systems'); expect(getWsTab()).toBe('systems');
+    setWsTab('nope'); expect(getWsTab()).toBe('systems');
   });
 });
