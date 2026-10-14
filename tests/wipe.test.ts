@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { saveGame, loadGame, wipeSave } from '../src/state/save.js';
+import { saveGame, loadGame, wipeSave, isFreshBoot } from '../src/state/save.js';
 describe('wipe', () => {
   it('removes primary, backup, and memory so load returns null', () => {
     saveGame({ wave: 60, flux: 500, ts: Date.now(), v: 1 } as any);
@@ -12,5 +12,13 @@ describe('wipe', () => {
     wipeSave();
     const s = freshState();
     expect(s.wave).toBe(1); expect(s.cores ?? 0).toBe(0); expect(s.essence).toBe(0);
+  });
+  it('fresh-boot flag matches ?fresh=1 only', () => {
+    expect(isFreshBoot('?fresh=1')).toBe(true);
+    expect(isFreshBoot('?fresh=1&x=2')).toBe(true);
+    expect(isFreshBoot('?x=2&fresh=1')).toBe(true);
+    expect(isFreshBoot('')).toBe(false);
+    expect(isFreshBoot('?fresh=0')).toBe(false);
+    expect(isFreshBoot('?fresh=10')).toBe(false);
   });
 });

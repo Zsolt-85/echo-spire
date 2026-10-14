@@ -32,6 +32,8 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 - **Forge cards (in run, Flux)** — Railguns, Targeting, Hull, Range, Regen, Crit, Volley, Bounce. Each card shows description + current → next values; glowing cards are affordable.
 - **Workshop cards (menu, cores)** — 12 tracks in 3 categories (Offense: dmg/rate/crit/volley/bounce, Defense: maxHull/bulkhead/regen, Systems: range/scope/essence/startFlux). Menu scrolls with a sticky Launch bar; the arena stays visible behind it.
 - **Collapse** — prestige once past wave 50.
+- **Retreat** — end the current run any time from the dock; same summary screen as death.
+- **Fresh start** — open the game with `?fresh=1` once (e.g. http://localhost:5173/?fresh=1) to wipe the save and boot clean, or use Wipe all data in the menu.
 - **Ultimates** — kills charge the dock meter 0–100 (+2 per kill, +10 per Cache kill). Unlock each ultimate once in the Workshop Ultimates tab for essence (Nova 20, Overdrive 35, Aegis 50). Fire buttons in the dock enable only at full charge + unlocked: Nova Burst deals 10x dmg to every ship on screen, Overdrive triples rate for 8s, Aegis blocks all hull damage for 12s. Charge resets each run; unlocks persist.
 
 ## Project layout

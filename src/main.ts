@@ -1,4 +1,4 @@
-import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
+import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
 import {buyUlt,fireUlt,ULTS} from './game/ultimates.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
@@ -6,6 +6,7 @@ const ctx=cv.getContext('2d')!;
 function fit(){cv.width=560*devicePixelRatio;cv.height=560*devicePixelRatio;}
 fit();addEventListener('resize',fit);
 const s=freshState();
+if(typeof location!=='undefined'&&isFreshBoot(location.search))wipeSave();
 try{
   const saved=loadGame();
   if(saved){
@@ -29,7 +30,8 @@ let best=1;
 try{const sv:any=loadGame();if(sv){if(typeof sv.best==='number')best=Math.floor(sv.best);else if(typeof sv.wave==='number'&&sv.wave>=1)best=Math.floor(sv.wave);}}catch{}
 function persist():void{best=Math.max(best,s.wave);try{saveGame({...s,best} as any);}catch{}}
 let lastDraw:number|null=null;
-const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(isDead(s)){const sum=endRun(s);persist();showGameOver(sum);loop.setPaused(true);}},()=>{const now=performance.now();const dt=Math.min(0.1,(now-(lastDraw??now))/1000);lastDraw=now;ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,now,s,dt);ctx.restore();renderHud(s);});
+function finishRun():void{const sum=endRun(s);persist();showGameOver(sum);loop.setPaused(true);}
+const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(isDead(s))finishRun();},()=>{const now=performance.now();const dt=Math.min(0.1,(now-(lastDraw??now))/1000);lastDraw=now;ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,now,s,dt);ctx.restore();renderHud(s);});
 function wire(id:string,fn:()=>void){const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{fn();renderHud(s);});}
 wire('buy-dmg',()=>{buyUpgrade(s,'dmg');});
 wire('buy-rate',()=>{buyUpgrade(s,'rate');});
@@ -54,8 +56,8 @@ wire('btn-speed-1',()=>{loop.setSpeed(1);markSpeed('btn-speed-1');});
 wire('btn-speed-2',()=>{loop.setSpeed(2);markSpeed('btn-speed-2');});
 wire('btn-speed-4',()=>{loop.setSpeed(4);markSpeed('btn-speed-4');});
 markSpeed('btn-speed-1');
-wire('btn-collapse',()=>{
-  const gained=collapseRun(s);
+wire('btn-retreat',()=>{if(getPhase()==='run')finishRun();});
+wire('btn-collapse',()=>{  const gained=collapseRun(s);
   if(gained>0){persist();}
   else{
     // Below gate: flash the requirement via button label, no state change.

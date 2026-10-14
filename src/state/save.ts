@@ -89,3 +89,7 @@ export function wipeSave(): void {
   remove(SAVE_KEY); remove(SAVE_KEY + '.bak');
   try { mem.clear(); } catch { /* never throw */ }
 }
+// Fresh-boot flag (?fresh=1): wipes before hydrate so a shared link starts clean.
+export function isFreshBoot(search: string): boolean {
+  return /(?:^\?|&)fresh=1(?:&|$)/.test(search);
+}
