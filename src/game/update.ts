@@ -1,8 +1,9 @@
-import type {GameState} from './state.js';import {isDead} from './lifecycle.js';import {spawnWave} from './spawning.js';import {maybeSpawnSurge,offerAugment} from './rifts.js';export {freshState} from './state.js';export {spawnWave} from './spawning.js';
+import type {GameState} from './state.js';import {isDead} from './lifecycle.js';import {spawnWave} from './spawning.js';import {enemyHp,enemyDmg} from '../sim/balance.js';import {maybeSpawnSurge,offerAugment} from './rifts.js';export {freshState} from './state.js';export {spawnWave} from './spawning.js';
 export function tickSim(s:GameState,dt:number){
   s.fx=s.fx??[];
   const pushFx=(e:{kind:'beam'|'spark'|'flash';x:number;y:number;tx:number;ty:number;ttl:number})=>{s.fx!.push(e);if(s.fx!.length>60)s.fx!.splice(0,s.fx!.length-60);};
-  if(s.ships.length===0){spawnWave(s);maybeSpawnSurge(s);
+  if((s._queue??0)>0){s._timer=(s._timer??0)-dt;const gap=Math.max(0.15,1.1-s.wave*0.008);while((s._timer??0)<=0&&(s._queue??0)>0){const id=s.nextId;const a=id*2.399963229728653;const kind=id%7===6?'hex':id%3===2?'bomber':'dart';s.ships.push({id:s.nextId++,kind,x:280+Math.cos(a)*260,y:280+Math.sin(a)*260,hp:enemyHp(s.wave),dmg:enemyDmg(s.wave),speed:22+s.wave*0.4,essence:0,behavior:id%3===2?'roamer':'seeker',wander:Math.random()*Math.PI*2});s._queue=(s._queue??1)-1;s._timer=(s._timer??0)+gap;}}
+  if(s.ships.length===0&&(s._queue??0)<=0){spawnWave(s);maybeSpawnSurge(s);
     if(s.wave>=10&&s.wave%10===0&&s._augmentWave!==s.wave&&!s.pendingAugment){s.pendingAugment=offerAugment();s._augmentWave=s.wave;}}
   // mothership fire: nearest in range, volley/crit/bounce
   s.ships.sort((a,b)=>((a.x-280)**2+(a.y-280)**2)-((b.x-280)**2+(b.y-280)**2));
@@ -28,7 +29,9 @@ export function tickSim(s:GameState,dt:number){
     }
     if(s.ships.some(x=>x.hp<=0))s.ships=s.ships.filter(x=>x.hp>0);}
   s._acc=shots;
-  for(const sh of s.ships){const dx=280-sh.x,dy=280-sh.y,d=Math.hypot(dx,dy)||1;sh.x+=dx/d*sh.speed*dt;sh.y+=dy/d*sh.speed*dt;
+  for(const sh of s.ships){const dx=280-sh.x,dy=280-sh.y,d=Math.hypot(dx,dy)||1;
+    if(sh.behavior==='roamer'){const px=-dy/d,py=dx/d;const tt=(s.timeS??0)+dt;const strafe=Math.sin((sh.wander??0)+tt)*40*dt;sh.x+=dx/d*sh.speed*dt+px*strafe;sh.y+=dy/d*sh.speed*dt+py*strafe;sh.wander=(sh.wander??0)+1.5*dt;}
+    else{sh.x+=dx/d*sh.speed*dt;sh.y+=dy/d*sh.speed*dt;}
     if(d<26){s.hull-=sh.dmg*dt*2;
       if(!s.fx!.some(e=>e.kind==='flash'))pushFx({kind:'flash',x:280,y:280,tx:280,ty:280,ttl:0.15});
       const alive=sh.hp>0;sh.hp-=s.dmg*dt*0.5;
@@ -37,5 +40,5 @@ export function tickSim(s:GameState,dt:number){
   s.hull=Math.min(s.maxHull,s.hull+(s.regen??0)*dt);
   s.hull=Math.max(0,s.hull); s.timeS=(s.timeS??0)+dt;
   if(isDead(s)) return;
-  if(s.ships.length===0){s.wave+=1;}
+  if((s._queue??0)<=0&&s.ships.length===0){s.wave+=1;}
 }

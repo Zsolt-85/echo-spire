@@ -45,18 +45,23 @@ function enemyDmg(wave) { return Math.round(2 * Math.pow(1.025, wave) * 10) / 10
 function freshState() {
   return { wave: 1, hull: 500, maxHull: 500, flux: 0, dmg: 12, rate: 1, range: 180,
     ships: [], nextId: 1, _acc: 0, essence: 0, levels: {}, pendingAugment: null, augments: [],
-    regen: 0, critCh: 0, volley: 0, bounce: 0 };
+    regen: 0, critCh: 0, volley: 0, bounce: 0, timeS: 0, _queue: 0, _timer: 0 };
 }
 
 // --- src/game/spawning.ts (verbatim) ---
 function spawnWave(s) {
-  const count = 4 + Math.floor(s.wave * 0.7);
-  for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2;
-    s.ships.push({ id: s.nextId++, kind: i % 7 === 6 ? 'hex' : i % 3 === 2 ? 'bomber' : 'dart',
+  const budget = 4 + Math.floor(s.wave * 0.7);
+  const released = Math.min(2, budget);
+  for (let k = 0; k < released; k++) {
+    const id = s.nextId;
+    const a = (k / budget) * Math.PI * 2;
+    const kind = id % 7 === 6 ? 'hex' : id % 3 === 2 ? 'bomber' : 'dart';
+    s.ships.push({ id: s.nextId++, kind,
       x: 280 + Math.cos(a) * 260, y: 280 + Math.sin(a) * 260,
-      hp: enemyHp(s.wave), dmg: enemyDmg(s.wave), speed: 22 + s.wave * 0.4, essence: 0 });
+      hp: enemyHp(s.wave), dmg: enemyDmg(s.wave), speed: 22 + s.wave * 0.4, essence: 0,
+      behavior: id % 3 === 2 ? 'roamer' : 'seeker', wander: Math.random() * Math.PI * 2 });
   }
+  s._queue = budget - released; s._timer = 0;
 }
 
 // --- src/game/rifts.ts maybeSpawnSurge (verbatim logic) ---
@@ -73,7 +78,19 @@ function maybeSpawnSurge(s) {
 
 // --- src/game/update.ts tickSim (verbatim logic, incl. Task 2 _acc fix) ---
 function tickSim(s, dt) {
-  if (s.ships.length === 0) {
+  if ((s._queue ?? 0) > 0) {
+    s._timer = (s._timer ?? 0) - dt;
+    const gap = Math.max(0.15, 1.1 - s.wave * 0.008);
+    while ((s._timer ?? 0) <= 0 && (s._queue ?? 0) > 0) {
+      const id = s.nextId; const a = id * 2.399963229728653;
+      const kind = id % 7 === 6 ? 'hex' : id % 3 === 2 ? 'bomber' : 'dart';
+      s.ships.push({ id: s.nextId++, kind, x: 280 + Math.cos(a) * 260, y: 280 + Math.sin(a) * 260,
+        hp: enemyHp(s.wave), dmg: enemyDmg(s.wave), speed: 22 + s.wave * 0.4, essence: 0,
+        behavior: id % 3 === 2 ? 'roamer' : 'seeker', wander: Math.random() * Math.PI * 2 });
+      s._queue = (s._queue ?? 1) - 1; s._timer = (s._timer ?? 0) + gap;
+    }
+  }
+  if (s.ships.length === 0 && (s._queue ?? 0) <= 0) {
     spawnWave(s); maybeSpawnSurge(s);
     if (s.wave >= 10 && s.wave % 10 === 0 && s._augmentWave !== s.wave && !s.pendingAugment) {
       s.pendingAugment = ['Split rounds +1 bounce', 'Crit surge +10%', 'Halo thorns'];
@@ -111,14 +128,22 @@ function tickSim(s, dt) {
   s._acc = shots;
   for (const sh of s.ships) {
     const dx = 280 - sh.x, dy = 280 - sh.y, d = Math.hypot(dx, dy) || 1;
-    sh.x += dx / d * sh.speed * dt; sh.y += dy / d * sh.speed * dt;
+    if (sh.behavior === 'roamer') {
+      const px = -dy / d, py = dx / d;
+      const tt = (s.timeS ?? 0) + dt;
+      const strafe = Math.sin((sh.wander ?? 0) + tt) * 40 * dt;
+      sh.x += dx / d * sh.speed * dt + px * strafe; sh.y += dy / d * sh.speed * dt + py * strafe;
+      sh.wander = (sh.wander ?? 0) + 1.5 * dt;
+    } else {
+      sh.x += dx / d * sh.speed * dt; sh.y += dy / d * sh.speed * dt;
+    }
     if (d < 26) { s.hull -= sh.dmg * dt * 2; const alive = sh.hp > 0; sh.hp -= s.dmg * dt * 0.5;
       if (alive && sh.hp <= 0) { s.flux += 6 + s.wave; if (sh.cache) s.essence += sh.essence * essenceMult; } }
   }
   s.ships = s.ships.filter(x => x.hp > 0);
   s.hull = Math.min(s.maxHull, s.hull + (s.regen ?? 0) * dt);
-  s.hull = Math.max(0, s.hull);
-  if (s.ships.length === 0) { s.wave += 1; }
+  s.hull = Math.max(0, s.hull); s.timeS = (s.timeS ?? 0) + dt;
+  if (s.ships.length === 0 && (s._queue ?? 0) <= 0) { s.wave += 1; }
 }
 
 // --- src/ui/panel.ts costs/effects (verbatim values, BASE from balance.ts) ---
