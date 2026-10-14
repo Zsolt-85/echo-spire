@@ -30,7 +30,7 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 
 - **x1 / x2 / x4 + Pause** — game speed, top dock. Auto-pauses when the tab hides.
 - **Forge cards (in run, Flux)** — Railguns, Targeting, Hull, Range, Regen, Crit, Volley, Bounce. Each card shows description + current → next values; glowing cards are affordable.
-- **Workshop cards (menu, cores)** — 12 tracks: 8 stat foundries + Essence Focus, Seed Vault (starting Flux), Bulkhead (hull), Far Scopes (range), grouped by category.
+- **Workshop cards (menu, cores)** — 12 tracks in 3 categories (Offense: dmg/rate/crit/volley/bounce, Defense: maxHull/bulkhead/regen, Systems: range/scope/essence/startFlux). Menu scrolls with a sticky Launch bar; the arena stays visible behind it.
 - **Collapse** — prestige once past wave 50.
 
 ## Project layout

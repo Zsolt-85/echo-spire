@@ -9,7 +9,7 @@ function render(): void {
   const m = el('menu-overlay'), o = el('over-overlay'), g = el('layout');
   if (m) m.style.display = phase === 'menu' ? 'flex' : 'none';
   if (o) o.style.display = phase === 'over' ? 'flex' : 'none';
-  if (g) g.style.visibility = phase === 'menu' ? 'hidden' : 'visible';
+  if (g) g.style.visibility = 'visible';
 }
 export function showMenu(best: number): void {
   toMenu();
