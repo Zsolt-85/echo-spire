@@ -26,3 +26,5 @@ export const OFFLINE_FLUX_PER_HR=120;
 export const LAB_GAIN_PER_LEVEL=0.08;
 export const LAB_TIME_BASE_S=60;
 export const LAB_TIME_GROWTH=1.6;
+export type WorkshopStat='dmg'|'rate'|'maxHull'|'range'|'regen'|'crit'|'volley'|'bounce';
+export const WORKSHOP_BASE:Record<WorkshopStat,{base:number;growth:number}>={dmg:{base:1,growth:1.8},rate:{base:2,growth:1.8},maxHull:{base:2,growth:1.8},range:{base:3,growth:1.9},regen:{base:3,growth:1.9},crit:{base:5,growth:2.1},volley:{base:8,growth:2.2},bounce:{base:8,growth:2.2}};

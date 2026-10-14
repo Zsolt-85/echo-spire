@@ -1,4 +1,4 @@
-import type {GameState} from '../game/state.js';import {upgradeCost} from './panel.js';import {applyAugment} from '../game/rifts.js';
+import type {GameState} from '../game/state.js';import {upgradeCost} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost} from '../state/workshop.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
 export function renderHud(s:GameState):void{
   if(typeof document==='undefined')return;
@@ -8,9 +8,12 @@ export function renderHud(s:GameState):void{
   txt('hud-flux',String(Math.floor(s.flux)));
   txt('hud-essence',String(s.essence??0));
   txt('hud-cores',String(s.cores??0));
+  txt('menu-cores',String(s.cores??0));
   txt('cost-dmg',String(upgradeCost('dmg',lv['dmg']??0)));
   txt('cost-rate',String(upgradeCost('rate',lv['rate']??0)));
   txt('cost-maxHull',String(upgradeCost('maxHull',lv['maxHull']??0)));
+  const w=(s as unknown as {workshop?:Record<string,number>}).workshop??{};
+  for(const st of WORKSHOP_STATS){txt(`btn-ws-${st}`,`${st} lv${w[st]??0} (${workshopCost(st,w[st]??0)} cores)`);}
   renderAugmentModal(s);
 }
 export function renderAugmentModal(s:GameState):void{
