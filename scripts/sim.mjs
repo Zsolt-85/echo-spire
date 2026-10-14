@@ -43,7 +43,8 @@ function enemyDmg(wave) { return Math.round(2 * Math.pow(1.025, wave) * 10) / 10
 // --- src/game/state.ts freshState (verbatim values) ---
 function freshState() {
   return { wave: 1, hull: 500, maxHull: 500, flux: 0, dmg: 12, rate: 1, range: 180,
-    ships: [], nextId: 1, _acc: 0, essence: 0, levels: {}, pendingAugment: null, augments: [] };
+    ships: [], nextId: 1, _acc: 0, essence: 0, levels: {}, pendingAugment: null, augments: [],
+    regen: 0, critCh: 0, volley: 0, bounce: 0 };
 }
 
 // --- src/game/spawning.ts (verbatim) ---
@@ -79,27 +80,48 @@ function tickSim(s, dt) {
     }
   }
   s.ships.sort((a, b) => ((a.x - 280) ** 2 + (a.y - 280) ** 2) - ((b.x - 280) ** 2 + (b.y - 280) ** 2));
+  const essenceMult = s._essenceMult ?? 1;
+  const targets = 1 + Math.floor((s.volley ?? 0) / 3);
   let shots = (s._acc ?? 0) + s.rate * dt, guard = 20;
   while (shots >= 1 && guard-- > 0 && s.ships.length) {
-    shots -= 1; const t = s.ships[0];
-    if ((t.x - 280) ** 2 + (t.y - 280) ** 2 <= s.range ** 2) {
-      t.hp -= s.dmg;
-      if (t.hp <= 0) { s.flux += 6 + s.wave; if (t.cache) s.essence += t.essence; s.ships.shift(); }
+    shots -= 1;
+    let hits = 0;
+    for (const t of s.ships) {
+      if (hits >= targets) break;
+      if (t.hp <= 0) continue;
+      if ((t.x - 280) ** 2 + (t.y - 280) ** 2 > s.range ** 2) continue;
+      let dmg = s.dmg;
+      if (Math.random() < (s.critCh ?? 0)) dmg *= 2;
+      t.hp -= dmg; hits++;
+      if (t.hp <= 0) {
+        s.flux += 6 + s.wave; if (t.cache) s.essence += t.essence * essenceMult;
+        const chains = Math.floor((s.bounce ?? 0) / 2);
+        for (let c = 0; c < chains; c++) {
+          let best = null, bestD = Infinity;
+          for (const o of s.ships) { if (o === t || o.hp <= 0) continue; const d2 = (o.x - 280) ** 2 + (o.y - 280) ** 2; if (d2 < bestD) { bestD = d2; best = o; } }
+          if (!best) break;
+          best.hp -= s.dmg * 0.5;
+          if (best.hp <= 0) { s.flux += 6 + s.wave; if (best.cache) s.essence += best.essence * essenceMult; }
+        }
+      }
     }
+    if (s.ships.some(x => x.hp <= 0)) s.ships = s.ships.filter(x => x.hp > 0);
   }
   s._acc = shots;
   for (const sh of s.ships) {
     const dx = 280 - sh.x, dy = 280 - sh.y, d = Math.hypot(dx, dy) || 1;
     sh.x += dx / d * sh.speed * dt; sh.y += dy / d * sh.speed * dt;
     if (d < 26) { s.hull -= sh.dmg * dt * 2; const alive = sh.hp > 0; sh.hp -= s.dmg * dt * 0.5;
-      if (alive && sh.hp <= 0) { s.flux += 6 + s.wave; if (sh.cache) s.essence += sh.essence; } }
+      if (alive && sh.hp <= 0) { s.flux += 6 + s.wave; if (sh.cache) s.essence += sh.essence * essenceMult; } }
   }
   s.ships = s.ships.filter(x => x.hp > 0);
+  s.hull = Math.min(s.maxHull, s.hull + (s.regen ?? 0) * dt);
+  s.hull = Math.max(0, s.hull);
   if (s.ships.length === 0) { s.wave += 1; }
 }
 
 // --- src/ui/panel.ts costs/effects (verbatim values, BASE from balance.ts) ---
-const BASE = { dmg: { base: 15, growth: 1.24 }, rate: { base: 22, growth: 1.28 }, maxHull: { base: 20, growth: 1.26 } };
+const BASE = { dmg: { base: 15, growth: 1.24 }, rate: { base: 22, growth: 1.28 }, maxHull: { base: 20, growth: 1.26 }, range: { base: 25, growth: 1.35 }, regen: { base: 30, growth: 1.4 }, crit: { base: 60, growth: 1.5 }, volley: { base: 150, growth: 1.6 }, bounce: { base: 150, growth: 1.6 } };
 function upgradeCost(stat, lvl) { return costFor(BASE[stat].base, BASE[stat].growth, lvl); }
 function buyUpgrade(s, stat) {
   const lvl = s.levels[stat] ?? 0; const c = upgradeCost(stat, lvl);
@@ -108,6 +130,11 @@ function buyUpgrade(s, stat) {
   if (stat === 'dmg') s.dmg = Math.round(s.dmg * 1.12 + 2);
   if (stat === 'rate') s.rate = Math.round((s.rate + 0.08) * 100) / 100;
   if (stat === 'maxHull') { s.maxHull = Math.round(s.maxHull * 1.1 + 50); s.hull = s.maxHull; }
+  if (stat === 'range') s.range += 15;
+  if (stat === 'regen') s.regen += 1.5;
+  if (stat === 'crit') s.critCh += 0.02;
+  if (stat === 'volley') s.volley += 1;
+  if (stat === 'bounce') s.bounce += 1;
   return true;
 }
 
