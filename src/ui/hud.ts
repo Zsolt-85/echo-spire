@@ -1,8 +1,9 @@
 import type {GameState} from '../game/state.js';import {upgradeCost, type Stat} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost, type WorkshopStat} from '../state/workshop.js';
 import {waveIntel} from '../game/spawning.js';
 import {FORGE_CATS, WS_CATS, getForgeTab, getWsTab} from './tabs.js';
-import {ULT_COST, ULT_CHARGE_MAX, fluxForKill, type UltId} from '../sim/balance.js';
+import {ULT_COST, ULT_CHARGE_MAX, fluxForKill, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, WAVESKIP_CMD, type UltId} from '../sim/balance.js';
 import {ULTS, canFire} from '../game/ultimates.js';
+import {TRAIN_SKILLS, THREADS, trainingLevel, speedUnlocked, type Skill} from '../state/training.js';
 import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
 const FORGE_STATS:Stat[]=['dmg','rate','maxHull','range','regen','crit','volley','bounce'];
@@ -98,7 +99,40 @@ export function renderHud(s:GameState):void{
       if (btn) { btn.disabled = !ready; btn.classList.toggle('on', ready); }
     }
   }
+  {
+    const sp = speedUnlocked(s);
+    const b8 = document.getElementById('btn-speed-8');
+    if (b8) b8.style.display = sp >= 8 ? '' : 'none';
+    const skip = document.getElementById('btn-skip');
+    if (skip) skip.style.display = trainingLevel(s, 'command') >= WAVESKIP_CMD ? '' : 'none';
+  }
+  renderAcademy(s);
   renderAugmentModal(s);
+}
+const THREAD_NEED: Record<string, number> = { t0: 0, t1: THREAD_2_CMD, t2: THREAD_3_CMD, t3: THREAD_4_CMD };
+export function renderAcademy(s:GameState):void{
+  if(typeof document==='undefined')return;
+  const t = (s as unknown as {training?:{levels?:Partial<Record<Skill,number>>;threads?:Record<string,{skill:Skill;doneAt:number}>}}).training;
+  const levels = t?.levels ?? {};
+  const threads = t?.threads ?? {};
+  const cmd = trainingLevel(s, 'command');
+  for(const th of THREADS){
+    const need = THREAD_NEED[th] ?? 0;
+    const locked = cmd < need;
+    const card = document.getElementById(`card-thread-${th}`);
+    if(card)card.style.display = locked ? 'none' : '';
+    const r = threads[th];
+    for(const sk of TRAIN_SKILLS){
+      const b = document.getElementById(`btn-train-${th}-${sk}`) as HTMLButtonElement | null;
+      if(b){ b.disabled = locked || !!r; b.classList.toggle('on', !!r && r.skill === sk); }
+    }
+    const lvlLine = locked ? `Locked (Command ${need})`
+      : r ? `${r.skill} Lv ${levels[r.skill] ?? 0} → ${Math.max(0, Math.ceil((r.doneAt - Date.now()) / 1000))}s`
+      : 'Idle — pick a skill';
+    txt(`thread-status-${th}`, lvlLine);
+    const lvTxt = TRAIN_SKILLS.map(sk => `${sk.slice(0,3)}:${levels[sk] ?? 0}`).join(' ');
+    txt(`thread-levels-${th}`, locked ? '' : lvTxt);
+  }
 }
 export function renderAugmentModal(s:GameState):void{
   if(typeof document==='undefined')return;

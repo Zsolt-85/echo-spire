@@ -1,6 +1,8 @@
 import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
 import {buyUlt,fireUlt,ULTS} from './game/ultimates.js';
+import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,THREADS,TRAIN_SKILLS} from './state/training.js';
+import {ENG_OFFLINE_PCT,WAVESKIP_CMD} from './sim/balance.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
 function fit(){cv.width=560*devicePixelRatio;cv.height=560*devicePixelRatio;}
@@ -11,7 +13,7 @@ try{
   const saved=loadGame();
   if(saved){
     if(typeof saved.wave==='number'&&saved.wave>=1)s.wave=Math.floor(saved.wave);
-    if(typeof saved.flux==='number')s.flux=saved.flux+(saved.offlineFlux??0);
+    if(typeof saved.flux==='number')s.flux=saved.flux;
     if(typeof saved.essence==='number')s.essence=saved.essence;
     if(typeof saved.cores==='number')s.cores=saved.cores;
     if(saved.levels&&typeof saved.levels==='object')s.levels=saved.levels;
@@ -23,6 +25,15 @@ try{
     if(typeof saved.dmg==='number')s.dmg=saved.dmg;
     if(typeof saved.rate==='number')s.rate=saved.rate;
     if(typeof saved.range==='number')s.range=saved.range;
+    if(saved.training&&typeof saved.training==='object')(s as any).training=saved.training;
+    if(typeof saved.offlineFlux==='number'&&saved.offlineFlux>0){
+      s.flux+=Math.round(saved.offlineFlux*(1+ENG_OFFLINE_PCT*trainingLevel(s,'engineering')));
+    }
+    try{
+      const elapsed=typeof saved.ts==='number'?Date.now()-saved.ts:0;
+      if(elapsed>0)advanceOffline(s,elapsed);
+    }catch{/* offline training best-effort */}
+    progressTraining(s);
     applyWorkshop(s);
   }
 }catch{/* corrupt save: fresh start, backup preserved by loadGame */}
@@ -51,11 +62,21 @@ wire('tab-ws-systems',()=>{setWsTab('systems');});
 wire('tab-ws-ultimates',()=>{setWsTab('ultimates');});
 for(const id of ULTS){wire(`btn-ult-${id}`,()=>{if(buyUlt(s,id))persist();});}
 for(const id of ULTS){wire(`btn-fire-${id}`,()=>{fireUlt(s,id);});}
-function markSpeed(id:string){for(const b of ['btn-speed-1','btn-speed-2','btn-speed-4']){const e=document.getElementById(b);if(e)e.classList.toggle('on',b===id);}}
+function markSpeed(id:string){for(const b of ['btn-speed-1','btn-speed-2','btn-speed-4','btn-speed-8']){const e=document.getElementById(b);if(e)e.classList.toggle('on',b===id);}}
+function gateSpeed(min:number,label:string,apply:()=>void){
+  if(speedUnlocked(s)>=min){apply();return;}
+  const map:Record<number,string>={2:'Logistics 1',4:'Logistics 4',8:'Logistics 8'};
+  const el=document.getElementById(label);
+  if(el){const t=el.textContent;el.textContent=`${label.replace('btn-speed-','x')} (needs ${map[min]})`;setTimeout(()=>{if(t)el.textContent=t;},1200);}
+}
 wire('btn-speed-1',()=>{loop.setSpeed(1);markSpeed('btn-speed-1');});
-wire('btn-speed-2',()=>{loop.setSpeed(2);markSpeed('btn-speed-2');});
-wire('btn-speed-4',()=>{loop.setSpeed(4);markSpeed('btn-speed-4');});
+wire('btn-speed-2',()=>{gateSpeed(2,'btn-speed-2',()=>{loop.setSpeed(2);markSpeed('btn-speed-2');});});
+wire('btn-speed-4',()=>{gateSpeed(4,'btn-speed-4',()=>{loop.setSpeed(4);markSpeed('btn-speed-4');});});
+wire('btn-speed-8',()=>{gateSpeed(8,'btn-speed-8',()=>{loop.setSpeed(8);markSpeed('btn-speed-8');});});
 markSpeed('btn-speed-1');
+let skipOn=false;
+wire('btn-skip',()=>{skipOn=!skipOn;const el=document.getElementById('btn-skip');if(el)el.classList.toggle('on',skipOn);});
+function launch():void{restartRun(s);applyWorkshop(s);if(skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;hideOverlays();loop.setPaused(false);}
 wire('btn-retreat',()=>{if(getPhase()==='run')finishRun();});
 wire('btn-collapse',()=>{  const gained=collapseRun(s);
   if(gained>0){persist();}
@@ -65,7 +86,7 @@ wire('btn-collapse',()=>{  const gained=collapseRun(s);
     if(el){const t=el.textContent;el.textContent=`Collapse (needs wave 50, have ${s.wave})`;setTimeout(()=>{el.textContent=t;},1200);}
   }
 });
-wire('btn-launch',()=>{restartRun(s);applyWorkshop(s);hideOverlays();loop.setPaused(false);});
+wire('btn-launch',()=>{launch();});
 wire('btn-wipe',()=>{
   const b=document.getElementById('btn-wipe');
   if(b&&(b as HTMLElement).dataset.armed==='1'){wipeSave();if(typeof location!=='undefined')location.reload();return;}
@@ -74,12 +95,22 @@ wire('btn-wipe',()=>{
     setTimeout(()=>{(b as HTMLElement).dataset.armed='';if(t)b.textContent=t;},3000);
   }
 });
-wire('btn-relaunch',()=>{restartRun(s);applyWorkshop(s);hideOverlays();loop.setPaused(false);});
-wire('btn-menu-workshop',()=>{showMenu(best);loop.setPaused(true);});
+wire('btn-relaunch',()=>{launch();});
+function setMenuView(v:'workshop'|'academy'):void{
+  const w=document.getElementById('menu-view-workshop'),a=document.getElementById('menu-view-academy');
+  if(w)w.style.display=v==='workshop'?'':'none';
+  if(a)a.style.display=v==='academy'?'':'none';
+  for(const id of ['tab-menu-workshop','tab-menu-academy']){const e=document.getElementById(id);if(e)e.classList.toggle('on',id===(v==='workshop'?'tab-menu-workshop':'tab-menu-academy'));}
+}
+wire('btn-menu-workshop',()=>{setMenuView('workshop');showMenu(best);loop.setPaused(true);});
+wire('tab-menu-workshop',()=>{setMenuView('workshop');});
+wire('tab-menu-academy',()=>{setMenuView('academy');});
+for(const t of THREADS){for(const sk of TRAIN_SKILLS){wire(`btn-train-${t}-${sk}`,()=>{startResearch(s,t,sk);});}}
 wire('btn-over-menu',()=>{showMenu(best);loop.setPaused(true);});
 showMenu(best);loop.setPaused(true);
 if(typeof window!=='undefined'){
   setInterval(()=>{persist();},10000);
+  setInterval(()=>{progressTraining(s);renderHud(s);},5000);
   addEventListener('pagehide',()=>{persist();});
 }
 const pauseBtn=document.getElementById('btn-pause');
