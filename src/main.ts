@@ -1,4 +1,4 @@
-import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
+import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
 function fit(){cv.width=560*devicePixelRatio;cv.height=560*devicePixelRatio;}
@@ -51,6 +51,14 @@ wire('btn-collapse',()=>{
   }
 });
 wire('btn-launch',()=>{restartRun(s);applyWorkshop(s);hideOverlays();loop.setPaused(false);});
+wire('btn-wipe',()=>{
+  const b=document.getElementById('btn-wipe');
+  if(b&&(b as HTMLElement).dataset.armed==='1'){wipeSave();if(typeof location!=='undefined')location.reload();return;}
+  if(b){
+    (b as HTMLElement).dataset.armed='1';const t=b.textContent;b.textContent='Sure? Click again to erase everything';
+    setTimeout(()=>{(b as HTMLElement).dataset.armed='';if(t)b.textContent=t;},3000);
+  }
+});
 wire('btn-relaunch',()=>{restartRun(s);applyWorkshop(s);hideOverlays();loop.setPaused(false);});
 wire('btn-menu-workshop',()=>{showMenu(best);loop.setPaused(true);});
 wire('btn-over-menu',()=>{showMenu(best);loop.setPaused(true);});

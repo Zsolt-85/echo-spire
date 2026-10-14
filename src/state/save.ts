@@ -24,16 +24,17 @@ export interface SaveData {
 
 const mem = new Map<string, string>();
 
-function store(): { getItem(k: string): string | null; setItem(k: string, v: string): void } {
+function store(): { getItem(k: string): string | null; setItem(k: string, v: string): void; removeItem(k: string): void } {
   try {
     const ls = (globalThis as any).localStorage;
-    if (ls && typeof ls.getItem === 'function' && typeof ls.setItem === 'function') return ls;
+    if (ls && typeof ls.getItem === 'function' && typeof ls.setItem === 'function' && typeof ls.removeItem === 'function') return ls;
   } catch {
     /* fall through to memory */
   }
   return {
     getItem: (k: string) => (mem.has(k) ? mem.get(k)! : null),
     setItem: (k: string, v: string) => void mem.set(k, v),
+    removeItem: (k: string) => void mem.delete(k),
   };
 }
 
@@ -81,4 +82,10 @@ export function loadGame(): any {
   };
   // Corrupt primary → fall back to backup slot, never wipe.
   return read(SAVE_KEY) ?? read(SAVE_KEY + '.bak') ?? null;
+}
+
+function remove(key: string): void { try { store().removeItem(key); } catch { /* never throw */ } }
+export function wipeSave(): void {
+  remove(SAVE_KEY); remove(SAVE_KEY + '.bak');
+  try { mem.clear(); } catch { /* never throw */ }
 }
