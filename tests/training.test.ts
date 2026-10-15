@@ -7,13 +7,13 @@ describe('training', () => {
     expect(researchTime(0)).toBe(60); expect(researchTime(1)).toBe(96);
   });
   it('completes in real time and levels the skill', () => {
-    const s = freshState() as any; s.training = { levels: {}, threads: {} };
+    const s = freshState() as any; s.training = { levels: {}, threads: {} }; s.cores = 100;
     expect(startResearch(s, 't0', 'gunnery')).toBe(true);
     progressTraining(s, Date.now() + 61 * 1000);
     expect(trainingLevel(s, 'gunnery')).toBe(1);
   });
   it('one active research per thread', () => {
-    const s = freshState() as any; s.training = { levels: {}, threads: {} };
+    const s = freshState() as any; s.training = { levels: {}, threads: {} }; s.cores = 100;
     startResearch(s, 't0', 'gunnery');
     expect(startResearch(s, 't0', 'logistics')).toBe(false);
   });

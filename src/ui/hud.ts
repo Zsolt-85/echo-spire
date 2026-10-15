@@ -3,7 +3,7 @@ import {waveIntel} from '../game/spawning.js';
 import {FORGE_CATS, WS_CATS, getForgeTab, getWsTab} from './tabs.js';
 import {ULT_COST, ULT_CHARGE_MAX, fluxForKill, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, WAVESKIP_CMD, LAB_LINE_GATE, type UltId} from '../sim/balance.js';
 import {ULTS, canFire} from '../game/ultimates.js';
-import {TRAIN_SKILLS, THREADS, RESEARCH_LINES, lineLevel, researchCost, lineUnlocked, lineResearchTime, labWorkshopCostMult, trainingLevel, speedUnlocked, type Skill, type LineId, type LineDef} from '../state/training.js';
+import {TRAIN_SKILLS, THREADS, RESEARCH_LINES, lineLevel, researchCost, lineUnlocked, lineResearchTime, labWorkshopCostMult, labSpeedMult, autoOn, labHistory, trainingLevel, speedUnlocked, type LineId, type LineDef} from '../state/training.js';
 import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
 const FORGE_STATS:Stat[]=['dmg','rate','maxHull','range','regen','crit','volley','bounce'];
@@ -112,12 +112,17 @@ export function renderHud(s:GameState):void{
   renderAugmentModal(s);
 }
 const THREAD_NEED: Record<string, number> = { t0: 0, t1: THREAD_2_CMD, t2: THREAD_3_CMD, t3: THREAD_4_CMD };
+type AcademyThreads = Record<string, { skill: LineId; startedAt?: number; durationMs?: number; doneAt?: number }>;
 export function renderAcademy(s:GameState):void{
   if(typeof document==='undefined')return;
-  const t = (s as unknown as {training?:{levels?:Partial<Record<Skill,number>>;threads?:Record<string,{skill:Skill;doneAt:number}>}}).training;
+  const t = (s as unknown as {training?:{levels?:Partial<Record<LineId,number>>;threads?:AcademyThreads;bank?:Record<string,{line:LineId;investedMs:number}>;auto?:Record<string,boolean>}}).training;
   const levels = t?.levels ?? {};
   const threads = t?.threads ?? {};
+  const bank = t?.bank ?? {};
+  const auto = t?.auto ?? {};
   const cmd = trainingLevel(s, 'command');
+  const mult = labSpeedMult(s);
+  const now = Date.now();
   for(const th of THREADS){
     const need = THREAD_NEED[th] ?? 0;
     const locked = cmd < need;
@@ -128,14 +133,81 @@ export function renderAcademy(s:GameState):void{
       const b = document.getElementById(`btn-train-${th}-${sk}`) as HTMLButtonElement | null;
       if(b){ b.disabled = locked || !!r; b.classList.toggle('on', !!r && r.skill === sk); }
     }
+    // Line picker: options built once (grouped by category), value synced per frame.
+    const pick = document.getElementById(`lab-pick-${th}`) as HTMLSelectElement | null;
+    if(pick && pick.childElementCount === 0){
+      for(const cat of LAB_CAT_ORDER){
+        const g = document.createElement('optgroup');
+        g.label = cat[0].toUpperCase() + cat.slice(1);
+        for(const [id, l] of Object.entries(RESEARCH_LINES) as [LineId, LineDef][]){
+          if(l.cat !== cat) continue;
+          const o = document.createElement('option');
+          o.value = id; o.textContent = `${l.name} (Lv ${lineLevel(s, id)}/${l.max})`;
+          g.appendChild(o);
+        }
+        pick.appendChild(g);
+      }
+    }
+    if(pick){
+      pick.disabled = locked;
+      const want = r?.skill ?? bank[th]?.line ?? pick.value;
+      if(want && pick.value !== want) pick.value = want;
+    }
+    const sw = document.getElementById(`btn-switch-${th}`) as HTMLButtonElement | null;
+    if(sw) sw.disabled = locked;
+    const au = document.getElementById(`btn-auto-${th}`) as HTMLButtonElement | null;
+    if(au){
+      au.disabled = locked;
+      au.setAttribute('aria-pressed', autoOn(s, th) ? 'true' : 'false');
+      au.textContent = autoOn(s, th) ? 'Auto: on' : 'Auto: off';
+      au.classList.toggle('on', autoOn(s, th));
+    }
+    // Countdown + progress from startedAt/durationMs (legacy doneAt fallback).
+    let remain = 0; let pct = 0;
+    if(r){
+      if(typeof r.startedAt === 'number' && typeof r.durationMs === 'number' && r.durationMs > 0){
+        const invested = Math.max(0, (now - r.startedAt) * mult);
+        remain = Math.max(0, Math.ceil((r.durationMs - invested) / 1000));
+        pct = Math.min(100, Math.round(invested / r.durationMs * 100));
+      } else if(typeof r.doneAt === 'number'){
+        remain = Math.max(0, Math.ceil((r.doneAt - now) / 1000));
+      }
+    }
     const lvlLine = locked ? `Locked (Command ${need})`
-      : r ? `${r.skill} Lv ${levels[r.skill] ?? 0} → ${Math.max(0, Math.ceil((r.doneAt - Date.now()) / 1000))}s`
-      : 'Idle — pick a skill';
+      : r ? `${r.skill} Lv ${levels[r.skill] ?? 0} → ${remain}s`
+      : 'Idle — pick a line';
     txt(`thread-status-${th}`, lvlLine);
+    const fill = document.getElementById(`lab-progress-fill-${th}`);
+    if(fill) fill.style.width = r ? `${pct}%` : '0%';
+    const b = bank[th];
+    txt(`thread-bank-${th}`, b ? `Banked ${b.line} ${Math.ceil(b.investedMs / 1000)}s — switching discards older bank` : '');
     const lvTxt = TRAIN_SKILLS.map(sk => `${sk.slice(0,3)}:${levels[sk] ?? 0}`).join(' ');
     txt(`thread-levels-${th}`, locked ? '' : lvTxt);
   }
   renderLabLines(s);
+  renderLabHistory(s);
+}
+let labHistKey = '';
+export function renderLabHistory(s:GameState):void{
+  if(typeof document==='undefined')return;
+  const host = document.getElementById('lab-history');
+  if(!host) return;
+  const h = labHistory(s).slice(0, 10);
+  const key = JSON.stringify(h);
+  if(key === labHistKey) return;
+  labHistKey = key;
+  host.replaceChildren();
+  if(h.length === 0){
+    const d = document.createElement('div');
+    d.textContent = 'No completions yet.';
+    host.appendChild(d);
+    return;
+  }
+  for(const e of h){
+    const d = document.createElement('div');
+    d.textContent = `${e.line} → Lv ${e.level} • ${new Date(e.at).toLocaleString()}`;
+    host.appendChild(d);
+  }
 }
 const LAB_CAT_ORDER = ['offense','defense','economy','command','mastery'] as const;
 function labStatus(id: LineId, s: GameState, best: number): string {

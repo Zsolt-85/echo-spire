@@ -1,6 +1,6 @@
 import { costFor, WORKSHOP_BASE, type WorkshopStat } from '../sim/balance.js';
 import type { GameState } from '../game/state.js';
-import { labWorkshopCostMult } from './training.js';
+import { labWorkshopCostMult, applyLineEffects } from './training.js';
 export type { WorkshopStat };
 export const WORKSHOP_STATS: WorkshopStat[] = ['dmg','rate','maxHull','range','regen','crit','volley','bounce','essence','startFlux','bulkhead','scope'];
 export function workshopCost(stat: WorkshopStat, lvl: number, mult = 1): number { return Math.max(1, Math.floor(costFor(WORKSHOP_BASE[stat].base, WORKSHOP_BASE[stat].growth, lvl) * mult)); }
@@ -10,8 +10,16 @@ export function buyWorkshop(s: GameState, stat: WorkshopStat): boolean {
   if ((s.cores ?? 0) < c) return false;
   s.cores = (s.cores ?? 0) - c;
   s.workshop = s.workshop ?? {}; s.workshop[stat] = lvl + 1;
-  applyWorkshop(s);
+  recomputeStats(s);
   return true;
+}
+// Single stat-recompute: workshop base first, then lab folds. Call at ALL
+// stat-mutation sites (hydrate, launch/restart, workshop buy) so lab folds
+// are never wiped mid-run; mid-run research completions use the incremental
+// applyLineDelta instead (never call this per completion — it re-folds).
+export function recomputeStats(s: GameState): void {
+  applyWorkshop(s);
+  applyLineEffects(s);
 }
 export function applyWorkshop(s: GameState): void {
   const w = s.workshop ?? {};

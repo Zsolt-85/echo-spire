@@ -1,7 +1,7 @@
-import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
+import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {recomputeStats,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
 import {buyUlt,fireUlt,ULTS} from './game/ultimates.js';
-import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,applyLineEffects,THREADS,TRAIN_SKILLS} from './state/training.js';
+import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,switchResearch,setAuto,autoOn,THREADS,TRAIN_SKILLS,type LineId} from './state/training.js';
 import {ENG_OFFLINE_PCT,WAVESKIP_CMD} from './sim/balance.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
@@ -45,7 +45,7 @@ try{
       if(elapsed>0)advanceOffline(s,elapsed);
     }catch{/* offline training best-effort */}
     progressTraining(s);
-    applyWorkshop(s);applyLineEffects(s);
+    recomputeStats(s);
   }
 }catch{/* corrupt save: fresh start, backup preserved by loadGame */}
 let best=1;
@@ -88,7 +88,7 @@ wire('btn-speed-8',()=>{gateSpeed(8,'btn-speed-8',()=>{loop.setSpeed(8);markSpee
 markSpeed('btn-speed-1');
 let skipOn=false;
 wire('btn-skip',()=>{skipOn=!skipOn;const el=document.getElementById('btn-skip');if(el)el.classList.toggle('on',skipOn);});
-function launch():void{restartRun(s);applyWorkshop(s);applyLineEffects(s);if(skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;hideOverlays();loop.setPaused(false);}
+function launch():void{restartRun(s);recomputeStats(s);if(skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;hideOverlays();loop.setPaused(false);}
 wire('btn-retreat',()=>{if(getPhase()==='run')finishRun();});
 wire('btn-collapse',()=>{  const gained=collapseRun(s);
   if(gained>0){persist();}
@@ -118,6 +118,10 @@ wire('btn-menu-workshop',()=>{setMenuView('workshop');showMenu(best);loop.setPau
 wire('tab-menu-workshop',()=>{setMenuView('workshop');});
 wire('tab-menu-academy',()=>{setMenuView('academy');});
 for(const t of THREADS){for(const sk of TRAIN_SKILLS){wire(`btn-train-${t}-${sk}`,()=>{startResearch(s,t,sk);});}}
+for(const t of THREADS){
+  wire(`btn-switch-${t}`,()=>{const pick=document.getElementById(`lab-pick-${t}`) as HTMLSelectElement|null;const line=((pick?.value ?? 'gunnery') as LineId);switchResearch(s,t,line,Date.now());});
+  wire(`btn-auto-${t}`,()=>{setAuto(s,t,!autoOn(s,t));});
+}
 wire('btn-over-menu',()=>{showMenu(best);loop.setPaused(true);});
 showMenu(best);loop.setPaused(true);
 if(typeof window!=='undefined'){
