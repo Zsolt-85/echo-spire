@@ -1,5 +1,6 @@
-// Headless balance check (Task 6, spec §4): simulate up to 1000 waves in Node,
-// assert the first-run wall lands at waves 80-120. Logs progress + verdict.
+// Headless balance check (grind-economy Task 4, spec §6): simulate up to 1000
+// waves in Node, assert the first-run wall lands at waves 40-60, and project
+// the 30-day Training Academy schedule (x2 day<=1, x4 day<=3). Logs + verdict.
 // Ultimates (reset/intel/tabs/ultimates Task 4) are excluded from this sim by
 // design: no essence unlocks, no charge, no fire — wall policy unchanged.
 //
@@ -34,8 +35,8 @@
 
 const DT = 1 / 60;
 const MAX_WAVE = 1000;
-const WALL_LO = 80;
-const WALL_HI = 120;
+const WALL_LO = 40;
+const WALL_HI = 60;
 const TICKS_PER_WAVE_CAP = 60 * 600; // 10 sim-minutes/wave stall guard
 
 // --- src/sim/balance.ts (verbatim) ---
@@ -219,8 +220,28 @@ function run() {
   }
   const pass = wall >= WALL_LO && wall <= WALL_HI && !stalled;
   console.log(`RESULT: wall at wave ${wall}${stalled ? ' (STALL guard tripped)' : ''}. Spec target: ${WALL_LO}-${WALL_HI}.`);
-  console.log(`VERDICT: ${pass ? 'PASS' : 'FAIL'}`);
-  process.exit(pass ? 0 : 1);
+  const academyOk = academyProjection();
+  console.log(`VERDICT: ${pass && academyOk ? 'PASS' : 'FAIL'}`);
+  process.exit(pass && academyOk ? 0 : 1);
+}
+
+// --- src/state/training.ts researchTime (verbatim formula: 60 x 1.6^level) ---
+function researchTime(level) { return Math.round(60 * Math.pow(1.6, level)); }
+
+// 30-day academy projection (Task 4): single thread t0 always busy,
+// researching logistics 0->4 then engineering 0->4 back-to-back. Command-gated
+// extra threads only speed this up, so this is the conservative schedule.
+function academyProjection() {
+  let t = 0; // seconds of single-thread research
+  const toLevel = (from, target) => { for (let l = from; l < target; l++) t += researchTime(l); };
+  toLevel(0, 1); const x2s = t; // logistics 1 -> x2 speed
+  toLevel(1, 4); const x4s = t; // logistics 4 -> x4 speed
+  toLevel(0, 4); const afs = t; // engineering 4 -> auto-forge
+  const day = (s) => s / 86400;
+  console.log(`ACADEMY: x2 at ${x2s}s (day ${day(x2s).toFixed(3)}), x4 at ${x4s}s (day ${day(x4s).toFixed(3)}), auto-forge at ${afs}s (day ${day(afs).toFixed(3)}).`);
+  const ok = day(x2s) <= 1 && day(x4s) <= 3;
+  console.log(`ACADEMY VERDICT: ${ok ? 'PASS' : 'FAIL'} (need x2 day<=1, x4 day<=3)`);
+  return ok;
 }
 
 run();

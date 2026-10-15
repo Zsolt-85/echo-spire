@@ -15,10 +15,14 @@ export function showMenu(best: number): void {
   toMenu();
   const b = el('menu-best'); if (b) b.textContent = String(best);
 }
-export function showGameOver(sum: { wave:number; kills:number; fluxEarned:number; essenceEarned:number; timeS:number; coresGained:number }): void {
+export function showGameOver(sum: { wave:number; kills:number; fluxEarned:number; essenceEarned:number; timeS:number; coresGained:number }, best = 0): void {
   toOver();
   const set = (id: string, v: string | number) => { const n = el(id); if (n) n.textContent = String(v); };
   set('over-wave', sum.wave); set('over-kills', sum.kills); set('over-flux', sum.fluxEarned);
   set('over-essence', sum.essenceEarned); set('over-time', Math.round(sum.timeS) + 's'); set('over-cores', sum.coresGained);
+  // Peak-wave callout (grind-economy plan Task 4): best is the pre-run record
+  // passed in by the caller, so `>` fires exactly on a new record.
+  const p = el('over-peak');
+  if (p) p.textContent = sum.wave > best ? `Wave ${sum.wave} — NEW BEST` : `Wave ${sum.wave}`;
 }
 export function hideOverlays(): void { toRun(); }

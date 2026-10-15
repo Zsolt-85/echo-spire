@@ -1,4 +1,4 @@
-import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
+import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
 import {buyUlt,fireUlt,ULTS} from './game/ultimates.js';
 import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,THREADS,TRAIN_SKILLS} from './state/training.js';
@@ -9,6 +9,16 @@ function fit(){cv.width=560*devicePixelRatio;cv.height=560*devicePixelRatio;}
 fit();addEventListener('resize',fit);
 const s=freshState();
 if(typeof location!=='undefined'&&isFreshBoot(location.search))wipeSave();
+// v2 clean break (grind-economy plan Task 4): a v1 payload refuses to load
+// (version gate in loadGame), so flag it for the menu notice, then wipe the
+// stale bytes — backup follows on the next persist.
+try{
+  if(hadLegacySave()){
+    const n=document.getElementById('menu-notice');
+    if(n)n.textContent='Economy rebalanced — fresh start (old save retired)';
+    wipeSave();
+  }
+}catch{/* notice best-effort; boot continues fresh */}
 try{
   const saved=loadGame();
   if(saved){
@@ -42,7 +52,7 @@ let best=1;
 try{const sv:any=loadGame();if(sv){if(typeof sv.best==='number')best=Math.floor(sv.best);else if(typeof sv.wave==='number'&&sv.wave>=1)best=Math.floor(sv.wave);}}catch{}
 function persist():void{best=Math.max(best,s.wave);try{saveGame({...s,best} as any);}catch{}}
 let lastDraw:number|null=null;
-function finishRun():void{const sum=endRun(s);persist();showGameOver(sum);loop.setPaused(true);}
+function finishRun():void{const prev=best;const sum=endRun(s);persist();showGameOver(sum,prev);loop.setPaused(true);}
 const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(isDead(s))finishRun();},()=>{const now=performance.now();const dt=Math.min(0.1,(now-(lastDraw??now))/1000);lastDraw=now;ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,now,s,dt);ctx.restore();renderHud(s);});
 function wire(id:string,fn:()=>void){const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{fn();renderHud(s);});}
 wire('buy-dmg',()=>{buyUpgrade(s,'dmg');});
