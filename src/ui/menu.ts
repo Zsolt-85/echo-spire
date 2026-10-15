@@ -10,10 +10,27 @@ function render(): void {
   if (m) m.style.display = phase === 'menu' ? 'flex' : 'none';
   if (o) o.style.display = phase === 'over' ? 'flex' : 'none';
   if (g) g.style.visibility = 'visible';
+  const hv = el('menu-view-home'), wv = el('menu-view-workshop'), av = el('menu-view-academy');
+  const bt = el('tab-menu-home'), bw = el('tab-menu-workshop'), ba = el('tab-menu-academy');
+  const bb = el('btn-back');
+  if (hv) hv.style.display = _menuView === 'home' ? 'block' : 'none';
+  if (wv) wv.style.display = _menuView === 'workshop' ? 'block' : 'none';
+  if (av) av.style.display = _menuView === 'academy' ? 'block' : 'none';
+  if (bt) bt.classList.toggle('on', _menuView === 'home');
+  if (bw) bw.classList.toggle('on', _menuView === 'workshop');
+  if (ba) ba.classList.toggle('on', _menuView === 'academy');
+  if (bb) bb.style.display = _menuView !== 'home' ? 'inline-block' : 'none';
+}
+export type MenuView = 'home' | 'workshop' | 'academy';
+let _menuView: MenuView = 'home';
+export function menuView(): MenuView { return _menuView; }
+export function setMenuView(v: MenuView): void {
+  if (v === 'home' || v === 'workshop' || v === 'academy') _menuView = v;
 }
 export function showMenu(best: number): void {
   toMenu();
   const b = el('menu-best'); if (b) b.textContent = String(best);
+  render();
 }
 export function showGameOver(sum: { wave:number; kills:number; fluxEarned:number; essenceEarned:number; timeS:number; coresGained:number }, best = 0): void {
   toOver();

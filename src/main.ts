@@ -1,4 +1,4 @@
-import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {recomputeStats,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
+import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase,setMenuView,menuView} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {recomputeStats,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
 import {wsBatchOf,wsBatchUnlocked,lifetimeCores} from './state/training.js';
 import {WS_BATCH_COST} from './sim/balance.js';
@@ -124,11 +124,6 @@ wire('btn-wipe',()=>{
   }
 });
 wire('btn-relaunch',()=>{launch();});
-function setMenuView(v:'workshop'|'academy'):void{
-  const w=document.getElementById('menu-view-workshop'),a=document.getElementById('menu-view-academy');
-  if(w)w.style.display=v==='workshop'?'':'none';
-  if(a)a.style.display=v==='academy'?'':'none';
-  for(const id of ['tab-menu-workshop','tab-menu-academy']){const e=document.getElementById(id);if(e)e.classList.toggle('on',id===(v==='workshop'?'tab-menu-workshop':'tab-menu-academy'));}
 }
 wire('btn-menu-workshop',()=>{setMenuView('workshop');showMenu(best);loop.setPaused(true);});
 wire('tab-menu-workshop',()=>{setMenuView('workshop');});
