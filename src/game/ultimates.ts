@@ -1,5 +1,6 @@
 import { ULT_CHARGE_PER_KILL, ULT_CHARGE_PER_CACHE, ULT_CHARGE_MAX, ULT_COST, ULT_NOVA_MULT, ULT_OD_SECS, ULT_AEGIS_SECS, fluxForKill, SHARD_W_BOSS, type UltId } from '../sim/balance.js';
 import type { GameState } from './state.js';
+import { noteCoresSpent } from '../state/training.js';
 export type { UltId };
 export { ULT_COST, ULT_CHARGE_MAX } from '../sim/balance.js';
 export const ULTS: UltId[] = ['nova', 'overdrive', 'aegis'];
@@ -15,6 +16,7 @@ export function buyUlt(s: GameState, id: UltId): boolean {
   const c = ULT_COST[id];
   if ((s.shards ?? 0) < c) return false;
   s.shards = (s.shards ?? 0) - c;
+  noteCoresSpent(s, c);
   s.ult = { nova: !!s.ult?.nova, overdrive: !!s.ult?.overdrive, aegis: !!s.ult?.aegis };
   s.ult[id] = true;
   return true;

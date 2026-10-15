@@ -1,8 +1,8 @@
 import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {recomputeStats,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
 import {buyUlt,fireUlt,ULTS} from './game/ultimates.js';
-import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,switchResearch,setAuto,autoOn,THREADS,TRAIN_SKILLS,type LineId} from './state/training.js';
-import {ENG_OFFLINE_PCT,WAVESKIP_CMD} from './sim/balance.js';
+import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,switchResearch,setAuto,autoOn,THREADS,TRAIN_SKILLS,labOfflineMult,type LineId} from './state/training.js';
+import {WAVESKIP_CMD} from './sim/balance.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
 function fit(){cv.width=560*devicePixelRatio;cv.height=560*devicePixelRatio;}
@@ -26,6 +26,7 @@ try{
     if(typeof saved.flux==='number')s.flux=saved.flux;
     if(typeof saved.essence==='number')s.essence=saved.essence;
     if(typeof saved.cores==='number')s.cores=saved.cores;
+    if(typeof (saved as unknown as {lifetimeCoresSpent?:unknown}).lifetimeCoresSpent==='number')s.lifetimeCoresSpent=Math.max(0,Math.floor((saved as unknown as {lifetimeCoresSpent:number}).lifetimeCoresSpent));
     if(typeof (saved as unknown as {shards?:unknown}).shards==='number')s.shards=(saved as unknown as {shards:number}).shards;
     if(saved.levels&&typeof saved.levels==='object')s.levels=saved.levels;
     if(saved.workshop&&typeof saved.workshop==='object')s.workshop=saved.workshop;
@@ -38,7 +39,7 @@ try{
     if(typeof saved.range==='number')s.range=saved.range;
     if(saved.training&&typeof saved.training==='object')(s as any).training=saved.training;
     if(typeof saved.offlineFlux==='number'&&saved.offlineFlux>0){
-      s.flux+=Math.round(saved.offlineFlux*(1+ENG_OFFLINE_PCT*trainingLevel(s,'engineering')));
+      s.flux+=Math.round(saved.offlineFlux*labOfflineMult(s));
     }
     try{
       const elapsed=typeof saved.ts==='number'?Date.now()-saved.ts:0;
@@ -46,6 +47,8 @@ try{
     }catch{/* offline training best-effort */}
     progressTraining(s);
     recomputeStats(s);
+    // Saved shield pool survives only up to the recomputed max.
+    if(typeof (saved as unknown as {shield?:unknown}).shield==='number')s.shield=Math.min(Math.max(0,(saved as unknown as {shield:number}).shield),s.shieldMax??0);
   }
 }catch{/* corrupt save: fresh start, backup preserved by loadGame */}
 let best=1;
@@ -88,7 +91,7 @@ wire('btn-speed-8',()=>{gateSpeed(8,'btn-speed-8',()=>{loop.setSpeed(8);markSpee
 markSpeed('btn-speed-1');
 let skipOn=false;
 wire('btn-skip',()=>{skipOn=!skipOn;const el=document.getElementById('btn-skip');if(el)el.classList.toggle('on',skipOn);});
-function launch():void{restartRun(s);recomputeStats(s);if(skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;hideOverlays();loop.setPaused(false);}
+function launch():void{restartRun(s);recomputeStats(s);s.shield=s.shieldMax??0;if(skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;hideOverlays();loop.setPaused(false);}
 wire('btn-retreat',()=>{if(getPhase()==='run')finishRun();});
 wire('btn-collapse',()=>{  const gained=collapseRun(s);
   if(gained>0){persist();}

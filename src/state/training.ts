@@ -2,22 +2,27 @@
 // Lab time formula. Ticked in real time (main.ts interval + on load),
 // 12h offline advance cap.
 //
-// Tower-style labs (tower-labs plan Task 1): the four legacy skills stay as
-// research lines with identical effects (existing saves keep their levels);
-// eight new lines in five categories join them. Tuning numbers live in
-// src/sim/balance.ts (LAB_*); this file holds names/descs + mechanics.
+// Mega-labs catalog (plan 1): RESEARCH_LINES is generated from the FAMILIES +
+// LINE_SPECS tables in balance.ts (single tuning source). The 12 legacy ids
+// keep their exact effects and levels (existing saves carry over); every line
+// carries fam/cat/max/timeMult/costDiv/minBest metadata. Effects flow through
+// the recomputeStats/applyLineDelta discipline: applyLineEffects runs only
+// immediately after applyWorkshop (see recomputeStats in workshop.ts), while
+// mid-run completions fold INCREMENTALLY via applyLineDelta — progressTraining
+// must never call applyLineEffects wholesale (that would compound gunnery and
+// the other multiplicative lines).
 //
 // Task 2 slot mechanics: switching banks invested time (cores are sunk —
 // resume costs cores again and re-checks affordability), auto-research
 // chains the next level while affordable, celerity multiplies research
-// speed, completions append to a capped history. Mid-run completions apply
-// effects INCREMENTALLY (applyLineDelta): applyLineEffects is only valid
-// immediately after applyWorkshop (see recomputeStats in workshop.ts), so
-// progressTraining must never call it wholesale — that would compound
-// gunnery/plating.
-import { TRAIN_TIME_BASE_S, TRAIN_TIME_GROWTH, TRAIN_OFFLINE_CAP_HRS, GUNNERY_PCT, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, SPEED2_LOG, SPEED4_LOG, SPEED8_LOG, LAB_MIN_SECS, LAB_LINE_MAX, LAB_LINE_TIME_MULT, LAB_LINE_GATE, LAB_LINE_CAT, LAB_DEADEYE_PCT, LAB_BARRAGE_EVERY, LAB_PLATING_PCT, LAB_NANITES_FLAT, LAB_SALVAGE_PCT, LAB_SIPHON_PCT, LAB_BROKER_PCT, LAB_CELERITY_PCT, type LabCat } from '../sim/balance.js';
+// speed, completions append to a capped history.
+import { TRAIN_TIME_BASE_S, TRAIN_TIME_GROWTH, TRAIN_OFFLINE_CAP_HRS, GUNNERY_PCT, ENG_OFFLINE_PCT, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, SPEED2_LOG, SPEED4_LOG, SPEED8_LOG, LAB_MIN_SECS, LAB_CELERITY_PCT, LAB_BROKER_PCT, FAMILIES as FAMS, LINE_SPECS, WS_BATCH_COST as WS_COST, type FamilyId as FamId, type LabCat, type LineEffectKind, type LineSpec } from '../sim/balance.js';
 import type { GameState } from '../game/state.js';
 export type Skill = 'gunnery' | 'logistics' | 'engineering' | 'command';
+export type LineId = string;
+export type FamilyId = FamId;
+export { FAMS as FAMILIES, WS_COST as WS_BATCH_COST };
+export type { LabCat, LineEffectKind, LineSpec };
 export const TRAIN_SKILLS: Skill[] = ['gunnery', 'logistics', 'engineering', 'command'];
 export const THREADS = ['t0', 't1', 't2', 't3'] as const;
 // Active research: startedAt + durationMs in wall-clock ms. `doneAt` survives
@@ -48,13 +53,25 @@ function threadUnlocked(s: GameState, thread: string): boolean {
   return cmd >= need;
 }
 function isLine(line: string): line is LineId { return (RESEARCH_LINES as Record<string, LineDef>)[line] !== undefined; }
+// Lifetime invest counter: every core-equivalent spend (workshop cores,
+// research cores, ult shard costs) accumulates here and gates workshop batch
+// tabs via wsBatchUnlocked. Persisted through the save spread; hydrated in
+// main.ts.
+export function lifetimeCores(s: GameState): number {
+  const v = (s as unknown as { lifetimeCoresSpent?: unknown }).lifetimeCoresSpent;
+  return typeof v === 'number' && v > 0 ? Math.floor(v) : 0;
+}
+export function noteCoresSpent(s: GameState, n: number): void {
+  if (!(n > 0)) return;
+  const cur = (s as unknown as { lifetimeCoresSpent?: unknown }).lifetimeCoresSpent;
+  (s as unknown as { lifetimeCoresSpent?: number }).lifetimeCoresSpent = (typeof cur === 'number' ? cur : 0) + n;
+}
 // Research costs cores upfront (sunk — switching never refunds). Resume of
 // the same banked line costs cores again. Unaffordable/maxed/busy/locked
-// threads refuse with false and leave state untouched. Milestone-gated lines
-// (deadeye/siphon best 60, barrage/broker best 100, celerity best 150) refuse
+// threads refuse with false and leave state untouched. Gated lines refuse
 // unless the gate is met: pass the caller's current best wave explicitly, or
-// omit it to fall back to s.best (old 3-arg calls for ungated lines behave
-// exactly as before).
+// omit it to fall back to s.best (old calls for ungated lines behave exactly
+// as before).
 export function startResearch(s: GameState, thread: string, line: LineId, nowMs = Date.now(), bestWave?: number): boolean {
   const t = store(s);
   if (!THREADS.includes(thread as never) || !isLine(line as string)) return false;
@@ -62,9 +79,10 @@ export function startResearch(s: GameState, thread: string, line: LineId, nowMs 
   if (!lineUnlocked(s, line, bestWave ?? 0)) return false;
   const lvl = lineLevel(s, line);
   if (lvl >= (RESEARCH_LINES[line]?.max ?? 0)) return false;
-  const cost = researchCost(line, lvl);
+  const cost = researchCost(line, lvl, s);
   if ((s.cores ?? 0) < cost) return false;
   s.cores = (s.cores ?? 0) - cost;
+  noteCoresSpent(s, cost);
   // Banked resume: same line on this thread continues from banked time.
   const resume = t.bank[thread];
   const invested = resume && resume.line === line ? Math.max(0, resume.investedMs) : 0;
@@ -88,7 +106,7 @@ export function switchResearch(s: GameState, thread: string, newLine: LineId, no
   if (!lineUnlocked(s, newLine, bestWave ?? 0)) return false;
   const lvl = lineLevel(s, newLine);
   if (lvl >= (RESEARCH_LINES[newLine]?.max ?? 0)) return false;
-  if ((s.cores ?? 0) < researchCost(newLine, lvl)) return false;
+  if ((s.cores ?? 0) < researchCost(newLine, lvl, s)) return false;
   const mult = labSpeedMult(s);
   const startedAt = typeof r.startedAt === 'number' ? r.startedAt : nowMs;
   const durationMs = typeof r.durationMs === 'number' ? r.durationMs : Math.max(0, (r.doneAt ?? nowMs) - nowMs);
@@ -118,9 +136,10 @@ function completeThread(s: GameState, t: TrainStore, id: string, line: LineId, n
   applyLineDelta(s, line, lvl);
   // Auto-research: chain level+1 of the same line while affordable, else idle.
   if (t.auto[id] && lvl < (RESEARCH_LINES[line]?.max ?? 0)) {
-    const cost = researchCost(line, lvl);
+    const cost = researchCost(line, lvl, s);
     if ((s.cores ?? 0) >= cost) {
       s.cores = (s.cores ?? 0) - cost;
+      noteCoresSpent(s, cost);
       t.threads[id] = { skill: line, startedAt: nowMs, durationMs: lineResearchTime(line, lvl) * 1000 };
     }
   }
@@ -151,93 +170,172 @@ export function speedUnlocked(s: GameState): 1 | 2 | 4 | 8 {
   const l = trainingLevel(s, 'logistics');
   return l >= SPEED8_LOG ? 8 : l >= SPEED4_LOG ? 4 : l >= SPEED2_LOG ? 2 : 1;
 }
-// --- Research catalog: 4 legacy lines (identical effects) + 8 new lines ---
-export type LineId = Skill | 'deadeye' | 'barrage' | 'plating' | 'nanites' | 'salvage' | 'siphon' | 'broker' | 'celerity';
-export type LineDef = { cat: LabCat; name: string; desc: string; max: number; timeMult: number };
-const LINE_TEXT: Record<LineId, { name: string; desc: string }> = {
-  gunnery: { name: 'Gunnery', desc: '+2% damage per level.' },
-  deadeye: { name: 'Deadeye', desc: '+0.3% crit chance per level. Best 60 to unlock.' },
-  barrage: { name: 'Barrage', desc: '+1 volley point per 5 levels. Best 100 to unlock.' },
-  plating: { name: 'Plating', desc: '+3% max hull per level.' },
-  nanites: { name: 'Nanites', desc: '+0.4 hull regen/s per level.' },
-  engineering: { name: 'Engineering', desc: 'Offline gains and auto-forge.' },
-  salvage: { name: 'Salvage', desc: '+3% flux income per level.' },
-  siphon: { name: 'Siphon', desc: '+3% essence income per level. Best 60 to unlock.' },
-  broker: { name: 'Broker', desc: '-1% workshop core costs per level. Best 100 to unlock.' },
-  logistics: { name: 'Logistics', desc: 'Speed x2/x4/x8 at levels 1/4/8.' },
-  command: { name: 'Command', desc: 'Extra research threads and wave skip.' },
-  celerity: { name: 'Celerity', desc: '+4% research speed per level. Best 150 to unlock.' },
-};
-function def(id: LineId): LineDef {
-  return { cat: LAB_LINE_CAT[id] ?? 'mastery', name: LINE_TEXT[id].name, desc: LINE_TEXT[id].desc, max: LAB_LINE_MAX[id] ?? 0, timeMult: LAB_LINE_TIME_MULT[id] ?? 1 };
+// --- Generated catalog: every line carries fam/cat/max/timeMult/costDiv/minBest ---
+export type LineDef = { fam: FamId; cat: LabCat; name: string; desc: string; max: number; timeMult: number; costDiv: number; minBest: number };
+const SPEC_BY_ID: Record<string, LineSpec> = {};
+for (const sp of LINE_SPECS) SPEC_BY_ID[sp.id] = sp;
+export function specOf(line: LineId): LineSpec | undefined { return SPEC_BY_ID[line]; }
+export const RESEARCH_LINES: Record<string, LineDef> = {};
+for (const sp of LINE_SPECS) {
+  RESEARCH_LINES[sp.id] = {
+    fam: sp.fam,
+    cat: (FAMS.find(f => f.id === sp.fam)?.cat ?? 'mastery') as LabCat,
+    name: sp.name, desc: sp.desc, max: sp.max,
+    timeMult: sp.timeMult, costDiv: sp.costDiv, minBest: sp.minBest,
+  };
 }
-export const RESEARCH_LINES: Record<LineId, LineDef> = {
-  gunnery: def('gunnery'), deadeye: def('deadeye'), barrage: def('barrage'),
-  plating: def('plating'), nanites: def('nanites'), engineering: def('engineering'),
-  salvage: def('salvage'), siphon: def('siphon'), broker: def('broker'),
-  logistics: def('logistics'), command: def('command'), celerity: def('celerity'),
-};
 export function lineLevel(s: GameState, line: LineId): number { return store(s).levels[line] ?? 0; }
-// Uniform core cost: 1 + floor(level/3) (same for every line).
-export function researchCost(line: LineId, level: number): number { void line; return 1 + Math.floor(level / 3); }
+// --- Ladders: family gates on best wave, workshop batches on lifetime spend ---
+export function lineFamily(line: LineId): FamId | undefined { return SPEC_BY_ID[line]?.fam; }
+function effBest(s: GameState, bestWave: number): number {
+  if (bestWave > 0) return bestWave;
+  const b = (s as unknown as { best?: unknown }).best;
+  return typeof b === 'number' && b > 0 ? Math.floor(b) : 0;
+}
+export function familyUnlocked(s: GameState, fam: FamId, bestWave = 0): boolean {
+  const f = FAMS.find(x => x.id === fam);
+  if (!f) return false;
+  return effBest(s, bestWave) >= f.best;
+}
+export function lineUnlocked(s: GameState, line: LineId, bestWave = 0): boolean {
+  const sp = SPEC_BY_ID[line];
+  if (!sp) return false;
+  const famBest = FAMS.find(x => x.id === sp.fam)?.best ?? 0;
+  return effBest(s, bestWave) >= Math.max(famBest, sp.minBest);
+}
+export function wsBatchUnlocked(s: GameState, batch: number): boolean {
+  if (batch <= 1) return true;
+  const need = WS_COST[batch - 1] ?? Infinity;
+  return lifetimeCores(s) >= need;
+}
+// Uniform core cost scaled per line: (1 + floor(level/3)) * costDiv,
+// discounted by thrift (-2%/level) when state is passed. Two-arg calls
+// (UI labels, old tests) skip the discount exactly as before.
+export function researchCost(line: LineId, level: number, s?: GameState): number {
+  const div = SPEC_BY_ID[line]?.costDiv ?? 1;
+  const base = (1 + Math.floor(level / 3)) * div;
+  if (!s) return base;
+  const thrift = lineLevel(s, 'thrift');
+  if (thrift <= 0) return base;
+  return Math.max(1, Math.floor(base * Math.max(0, 1 - 0.02 * thrift)));
+}
 export function lineResearchTime(line: LineId, level: number): number {
   const mult = RESEARCH_LINES[line]?.timeMult ?? 1;
   return Math.max(LAB_MIN_SECS, Math.round(researchTime(level) * mult));
 }
-export function lineUnlocked(s: GameState, line: LineId, bestWave = 0): boolean {
-  const b = bestWave > 0 ? bestWave : ((s as unknown as { best?: number }).best ?? 0);
-  return b >= (LAB_LINE_GATE[line] ?? 0);
-}
-export function labFluxMult(s: GameState): number { return 1 + LAB_SALVAGE_PCT * lineLevel(s, 'salvage'); }
+// Live read-site mults (no stat fold — safe to call anywhere).
+export function labFluxMult(s: GameState): number { return 1 + sumKind(s, 'fluxPct'); }
 export function labWorkshopCostMult(s: GameState): number { return Math.max(0, 1 - LAB_BROKER_PCT * lineLevel(s, 'broker')); }
+export function labOfflineMult(s: GameState): number {
+  return 1 + ENG_OFFLINE_PCT * lineLevel(s, 'engineering') + sumKind(s, 'offlinePct');
+}
+// --- Generic fold helpers over the spec table ---
+function sumKind(s: GameState, kind: LineEffectKind): number {
+  let acc = 0;
+  const lv = store(s).levels;
+  for (const sp of LINE_SPECS) {
+    if (sp.effect !== kind) continue;
+    const n = lv[sp.id] ?? 0;
+    if (n > 0) acc += sp.per * n;
+  }
+  return acc;
+}
+function prodKind(s: GameState, kind: LineEffectKind): number {
+  let acc = 1;
+  const lv = store(s).levels;
+  for (const sp of LINE_SPECS) {
+    if (sp.effect !== kind) continue;
+    const n = lv[sp.id] ?? 0;
+    if (n > 0) acc *= 1 + sp.per * n;
+  }
+  return acc;
+}
+function stepKind(s: GameState, kind: LineEffectKind): number {
+  let acc = 0;
+  const lv = store(s).levels;
+  for (const sp of LINE_SPECS) {
+    if (sp.effect !== kind) continue;
+    const n = lv[sp.id] ?? 0;
+    if (n > 0) acc += Math.floor(n / (sp.every ?? 1)) * sp.per;
+  }
+  return acc;
+}
+function recomputeShield(s: GameState): void {
+  s.shieldMax = Math.round(sumKind(s, 'shieldFlat') * prodKind(s, 'shieldPct'));
+}
 // Delta fold for ONE completed level (newLevel = level after increment).
-// Keeps mid-run completions live without a workshop recompute: multiplicative
-// folds (gunnery/plating/siphon) scale by the new/old ratio, additive folds
-// add one level's worth. All other lines apply at live read sites (speed
-// gates, thread gates, auto-forge, offline, workshop costs) — no fold here.
+// Multiplicative workshop-base lines (dmg/maxHull/rate/regen/essence) scale by
+// the new/old ratio for that line's own factor (order-independent, exact);
+// additive lines add one level's worth (step lines credit threshold crossings
+// only); shield/flux recompute by assignment (idempotent); live-site and
+// later-plan kinds need no fold here.
 export function applyLineDelta(s: GameState, line: LineId, newLevel: number): void {
   if (newLevel <= 0) return;
+  const sp = SPEC_BY_ID[line];
+  if (!sp) return;
   const ax = s as unknown as { _fluxMult?: number; _essenceMult?: number };
-  if (line === 'gunnery') {
-    const prev = 1 + GUNNERY_PCT * (newLevel - 1);
-    if (prev > 0) s.dmg = Math.round(s.dmg * (1 + GUNNERY_PCT * newLevel) / prev);
-  } else if (line === 'deadeye') {
-    s.critCh = (s.critCh ?? 0) + LAB_DEADEYE_PCT;
-  } else if (line === 'barrage') {
-    s.volley = (s.volley ?? 0) + (Math.floor(newLevel / LAB_BARRAGE_EVERY) - Math.floor((newLevel - 1) / LAB_BARRAGE_EVERY));
-  } else if (line === 'plating') {
-    const prev = 1 + LAB_PLATING_PCT * (newLevel - 1);
-    if (prev > 0) s.maxHull = Math.round(s.maxHull * (1 + LAB_PLATING_PCT * newLevel) / prev);
-    if (s.hull > s.maxHull) s.hull = s.maxHull;
-  } else if (line === 'nanites') {
-    s.regen = (s.regen ?? 0) + LAB_NANITES_FLAT;
-  } else if (line === 'salvage') {
-    ax._fluxMult = labFluxMult(s);
-  } else if (line === 'siphon') {
-    const prev = 1 + LAB_SIPHON_PCT * (newLevel - 1);
-    if (prev > 0) ax._essenceMult = (ax._essenceMult ?? 1) * (1 + LAB_SIPHON_PCT * newLevel) / prev;
+  const ratio = (1 + sp.per * newLevel) / (1 + sp.per * (newLevel - 1));
+  const stepDiff = Math.floor(newLevel / (sp.every ?? 1)) - Math.floor((newLevel - 1) / (sp.every ?? 1));
+  switch (sp.effect) {
+    case 'dmgPct': s.dmg = Math.round(s.dmg * ratio); break;
+    case 'maxHullPct': {
+      s.maxHull = Math.round(s.maxHull * ratio);
+      if (s.hull > s.maxHull) s.hull = s.maxHull;
+      break;
+    }
+    case 'ratePct': s.rate = Math.round(s.rate * ratio * 100) / 100; break;
+    case 'regenPct': s.regen = (s.regen ?? 0) * ratio; break;
+    case 'essencePct': ax._essenceMult = (ax._essenceMult ?? 1) * ratio; break;
+    case 'critAdd': s.critCh = (s.critCh ?? 0) + sp.per; break;
+    case 'thorns': s.thorns = (s.thorns ?? 0) + sp.per; break;
+    case 'bossMult': s.bossMult = (s.bossMult ?? 0) + sp.per; break;
+    case 'cacheLuck': s.cacheLuck = (s.cacheLuck ?? 0) + sp.per; break;
+    case 'cacheQuality': s.cacheQuality = (s.cacheQuality ?? 0) + sp.per; break;
+    case 'ultCharge': s.ultChargeMult = (s.ultChargeMult ?? 0) + sp.per; break;
+    case 'critMult': s.critMult = (s.critMult ?? 0) + sp.per; break;
+    case 'splash': s.splashR = (s.splashR ?? 0) + sp.per; break;
+    case 'rangeFlat': s.range = (s.range ?? 0) + sp.per; break;
+    case 'regenFlat': s.regen = (s.regen ?? 0) + sp.per; break;
+    case 'volleyEvery': s.volley = (s.volley ?? 0) + stepDiff * sp.per; break;
+    case 'bounceEvery': s.bounce = (s.bounce ?? 0) + stepDiff * sp.per; break;
+    case 'rateStep': s.rate = Math.round(((s.rate ?? 0) + stepDiff * sp.per) * 100) / 100; break;
+    case 'fluxPct': ax._fluxMult = labFluxMult(s); break;
+    case 'shieldFlat':
+    case 'shieldPct': recomputeShield(s); break;
+    default: break; // live read sites + later-plan kinds: no fold
   }
 }
 // Fold line levels into combat fields. CALL ONLY immediately after
-// applyWorkshop: gunnery/plating multiply the fresh workshop base, so a
-// repeat call without applyWorkshop in between would compound. Prefer
-// recomputeStats (workshop.ts) at stat-mutation sites, applyLineDelta for
-// mid-run completions.
+// applyWorkshop: multiplicative lines scale the fresh workshop base, so a
+// repeat call without applyWorkshop in between would compound. Lab-only
+// fields (thorns/shield/splash/...) assign from levels (applyWorkshop never
+// touches them). Prefer recomputeStats (workshop.ts) at stat-mutation sites,
+// applyLineDelta for mid-run completions.
 export function applyLineEffects(s: GameState): void {
-  const lv = (l: LineId) => lineLevel(s, l);
-  const gun = lv('gunnery');
-  if (gun > 0) s.dmg = Math.round(s.dmg * (1 + GUNNERY_PCT * gun));
-  const eye = lv('deadeye');
-  if (eye > 0) s.critCh = (s.critCh ?? 0) + LAB_DEADEYE_PCT * eye;
-  const bar = lv('barrage');
-  if (bar > 0) s.volley = (s.volley ?? 0) + Math.floor(bar / LAB_BARRAGE_EVERY);
-  const pla = lv('plating');
-  if (pla > 0) { s.maxHull = Math.round(s.maxHull * (1 + LAB_PLATING_PCT * pla)); if (s.hull > s.maxHull) s.hull = s.maxHull; }
-  const nan = lv('nanites');
-  if (nan > 0) s.regen = (s.regen ?? 0) + LAB_NANITES_FLAT * nan;
+  s.dmg = Math.round(s.dmg * prodKind(s, 'dmgPct'));
+  s.maxHull = Math.round(s.maxHull * prodKind(s, 'maxHullPct'));
+  if (s.hull > s.maxHull) s.hull = s.maxHull;
+  s.critCh = (s.critCh ?? 0) + sumKind(s, 'critAdd');
+  s.volley = (s.volley ?? 0) + stepKind(s, 'volleyEvery');
+  s.bounce = (s.bounce ?? 0) + stepKind(s, 'bounceEvery');
+  s.rate = Math.round(((s.rate ?? 0) + stepKind(s, 'rateStep')) * prodKind(s, 'ratePct') * 100) / 100;
+  s.regen = ((s.regen ?? 0) + sumKind(s, 'regenFlat')) * prodKind(s, 'regenPct');
+  s.range = (s.range ?? 0) + sumKind(s, 'rangeFlat');
+  recomputeShield(s);
+  s.thorns = sumKind(s, 'thorns');
+  s.splashR = sumKind(s, 'splash');
+  s.critMult = sumKind(s, 'critMult');
+  s.slowPct = 0; // no source lines yet (later plan)
+  s.bossMult = sumKind(s, 'bossMult');
+  s.cacheLuck = sumKind(s, 'cacheLuck');
+  s.cacheQuality = sumKind(s, 'cacheQuality');
+  s.ultChargeMult = sumKind(s, 'ultCharge');
+  if (s.flux === 0) s.flux += Math.round(sumKind(s, 'startFlux'));
   (s as unknown as { _fluxMult?: number })._fluxMult = labFluxMult(s);
   const em = (s as unknown as { _essenceMult?: number })._essenceMult ?? 1;
-  (s as unknown as { _essenceMult?: number })._essenceMult = em * (1 + LAB_SIPHON_PCT * lv('siphon'));
-  // logistics/command/engineering/celerity apply at live read sites
-  // (speedUnlocked, thread gates, auto-forge, offline) — no fold.
+  (s as unknown as { _essenceMult?: number })._essenceMult = em * prodKind(s, 'essencePct');
+  // logistics/command/engineering/celerity/thrift/broker/offline lines apply
+  // at live read sites (speedUnlocked, thread gates, auto-forge, offline,
+  // research costs, workshop costs) — no fold. spawnGap/surgeLuck/
+  // heraldLuck/echoDps feed later plans — no fold yet.
 }
