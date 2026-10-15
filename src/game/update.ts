@@ -1,4 +1,4 @@
-import type {GameState} from './state.js';import {isDead} from './lifecycle.js';import {spawnWave} from './spawning.js';import {enemyHp,enemyDmg,fluxForKill,ULT_OD_MULT,BASE,AUTOFORGE_ENG} from '../sim/balance.js';import {ultChargeForKill} from './ultimates.js';import {maybeSpawnSurge,offerAugment} from './rifts.js';export {freshState} from './state.js';export {spawnWave} from './spawning.js';
+import type {GameState} from './state.js';import {isDead} from './lifecycle.js';import {spawnWave} from './spawning.js';import {enemyHp,enemyDmg,fluxForKill,costFor,ULT_OD_MULT,BASE,AUTOFORGE_ENG} from '../sim/balance.js';import {ultChargeForKill} from './ultimates.js';import {maybeSpawnSurge,offerAugment} from './rifts.js';export {freshState} from './state.js';export {spawnWave} from './spawning.js';
 import {trainingMult,trainingLevel} from '../state/training.js';import {buyUpgrade,type Stat} from '../ui/panel.js';
 function buyCheapest(s:GameState):void{
   const stats:Stat[]=['dmg','rate','maxHull','range','regen','crit','volley','bounce'];
