@@ -1,10 +1,14 @@
 import { costFor, WORKSHOP_BASE, type WorkshopStat } from '../sim/balance.js';
 import type { GameState } from '../game/state.js';
-import { labWorkshopCostMult, applyLineEffects, noteCoresSpent } from './training.js';
+import { labWorkshopCostMult, applyLineEffects, noteCoresSpent, wsBatchUnlocked, wsBatchOf } from './training.js';
 export type { WorkshopStat };
 export const WORKSHOP_STATS: WorkshopStat[] = ['dmg','rate','maxHull','range','regen','crit','volley','bounce','essence','startFlux','bulkhead','scope'];
 export function workshopCost(stat: WorkshopStat, lvl: number, mult = 1): number { return Math.max(1, Math.floor(costFor(WORKSHOP_BASE[stat].base, WORKSHOP_BASE[stat].growth, lvl) * mult)); }
 export function buyWorkshop(s: GameState, stat: WorkshopStat): boolean {
+  // Invest ladder: batches 2/3 refuse until lifetime core-equivalent spend
+  // (workshop + research + ult shards) meets the threshold. Batch 1 always
+  // open, so legacy tracks and old saves keep working.
+  if (!wsBatchUnlocked(s, wsBatchOf(stat))) return false;
   const lvl = s.workshop?.[stat] ?? 0;
   const c = workshopCost(stat, lvl, labWorkshopCostMult(s));
   if ((s.cores ?? 0) < c) return false;

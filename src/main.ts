@@ -1,5 +1,7 @@
 import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {recomputeStats,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
+import {wsBatchOf,wsBatchUnlocked,lifetimeCores} from './state/training.js';
+import {WS_BATCH_COST} from './sim/balance.js';
 import {buyUlt,fireUlt,ULTS} from './game/ultimates.js';
 import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,switchResearch,setAuto,autoOn,THREADS,TRAIN_SKILLS,labOfflineMult,type LineId} from './state/training.js';
 import {WAVESKIP_CMD} from './sim/balance.js';
@@ -67,13 +69,23 @@ wire('buy-regen',()=>{buyUpgrade(s,'regen');});
 wire('buy-crit',()=>{buyUpgrade(s,'crit');});
 wire('buy-volley',()=>{buyUpgrade(s,'volley');});
 wire('buy-bounce',()=>{buyUpgrade(s,'bounce');});
-for(const st of WORKSHOP_STATS){wire(`btn-ws-${st}`,()=>{if(buyWorkshop(s,st))persist();});}
+for(const st of WORKSHOP_STATS){wire(`btn-ws-${st}`,()=>{
+  // Batch wires respect the invest ladder: locked batches refuse with a
+  // flashed requirement instead of spending cores (buyWorkshop also refuses).
+  const batch=wsBatchOf(st);
+  if(!wsBatchUnlocked(s,batch)){
+    const el=document.getElementById(`btn-ws-${st}`);
+    if(el){const t=el.textContent;el.textContent=`Batch ${batch} — invest ${WS_BATCH_COST[batch-1] ?? 0} core-equiv (${lifetimeCores(s)}/${WS_BATCH_COST[batch-1] ?? 0})`;setTimeout(()=>{if(t)el.textContent=t;},1200);}
+    return;
+  }
+  if(buyWorkshop(s,st))persist();
+});}
 wire('tab-forge-weapons',()=>{setForgeTab('weapons');});
 wire('tab-forge-hull',()=>{setForgeTab('hull');});
 wire('tab-forge-systems',()=>{setForgeTab('systems');});
-wire('tab-ws-offense',()=>{setWsTab('offense');});
-wire('tab-ws-defense',()=>{setWsTab('defense');});
-wire('tab-ws-systems',()=>{setWsTab('systems');});
+wire('tab-ws-batch1',()=>{setWsTab('batch1');});
+wire('tab-ws-batch2',()=>{setWsTab('batch2');});
+wire('tab-ws-batch3',()=>{setWsTab('batch3');});
 wire('tab-ws-ultimates',()=>{setWsTab('ultimates');});
 for(const id of ULTS){wire(`btn-ult-${id}`,()=>{if(buyUlt(s,id))persist();});}
 for(const id of ULTS){wire(`btn-fire-${id}`,()=>{fireUlt(s,id);});}

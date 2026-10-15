@@ -16,12 +16,12 @@
 // resume costs cores again and re-checks affordability), auto-research
 // chains the next level while affordable, celerity multiplies research
 // speed, completions append to a capped history.
-import { TRAIN_TIME_BASE_S, TRAIN_TIME_GROWTH, TRAIN_OFFLINE_CAP_HRS, GUNNERY_PCT, ENG_OFFLINE_PCT, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, SPEED2_LOG, SPEED4_LOG, SPEED8_LOG, LAB_MIN_SECS, LAB_CELERITY_PCT, LAB_BROKER_PCT, FAMILIES as FAMS, LINE_SPECS, WS_BATCH_COST as WS_COST, type FamilyId as FamId, type LabCat, type LineEffectKind, type LineSpec } from '../sim/balance.js';
+import { TRAIN_TIME_BASE_S, TRAIN_TIME_GROWTH, TRAIN_OFFLINE_CAP_HRS, GUNNERY_PCT, ENG_OFFLINE_PCT, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, SPEED2_LOG, SPEED4_LOG, SPEED8_LOG, LAB_MIN_SECS, LAB_CELERITY_PCT, LAB_BROKER_PCT, FAMILIES as FAMS, LINE_SPECS, WS_BATCH_COST as WS_COST, WS_BATCH_STATS as WS_BSTATS, type FamilyId as FamId, type LabCat, type LineEffectKind, type LineSpec } from '../sim/balance.js';
 import type { GameState } from '../game/state.js';
 export type Skill = 'gunnery' | 'logistics' | 'engineering' | 'command';
 export type LineId = string;
 export type FamilyId = FamId;
-export { FAMS as FAMILIES, WS_COST as WS_BATCH_COST };
+export { FAMS as FAMILIES, WS_COST as WS_BATCH_COST, WS_BSTATS as WS_BATCH_STATS };
 export type { LabCat, LineEffectKind, LineSpec };
 export const TRAIN_SKILLS: Skill[] = ['gunnery', 'logistics', 'engineering', 'command'];
 export const THREADS = ['t0', 't1', 't2', 't3'] as const;
@@ -207,6 +207,28 @@ export function wsBatchUnlocked(s: GameState, batch: number): boolean {
   if (batch <= 1) return true;
   const need = WS_COST[batch - 1] ?? Infinity;
   return lifetimeCores(s) >= need;
+}
+// Workshop batch membership (spec §2): which of the 12 tracks each Batch tab
+// holds. Unknown stats default to batch 1 (always open — never lock legacy).
+export function wsBatchOf(stat: string): number {
+  for (const b of [1, 2, 3]) {
+    if ((WS_BSTATS[b] ?? []).includes(stat)) return b;
+  }
+  return 1;
+}
+// Effective best-wave gate for one line: max(family gate, per-line minBest).
+// Single replacement for every legacy LAB_LINE_GATE read in UI labels.
+export function lineGate(line: LineId): number {
+  const sp = SPEC_BY_ID[line];
+  if (!sp) return 0;
+  const famBest = FAMS.find(x => x.id === sp.fam)?.best ?? 0;
+  return Math.max(famBest, sp.minBest);
+}
+// Teaser data for locked-family silhouette cards: have/need + unlock flag.
+export function familyProgress(s: GameState, fam: FamId, bestWave = 0): { need: number; have: number; unlocked: boolean } {
+  const need = FAMS.find(x => x.id === fam)?.best ?? 0;
+  const have = effBest(s, bestWave);
+  return { need, have, unlocked: have >= need };
 }
 // Uniform core cost scaled per line: (1 + floor(level/3)) * costDiv,
 // discounted by thrift (-2%/level) when state is passed. Two-arg calls

@@ -96,6 +96,12 @@ export const FAMILIES:FamDef[]=[
 // Workshop invest ladder: batch tabs unlock on lifetime core-equivalent spend
 // (workshop cores + research cores + ult shard costs). Indexed batch-1.
 export const WS_BATCH_COST=[0,100,500];
+// Batch composition (spec §2 verbatim: 'hull' is the maxHull workshop track).
+export const WS_BATCH_STATS:Record<number,readonly string[]>={
+  1:['dmg','rate','maxHull','range'],
+  2:['regen','crit','volley','bounce'],
+  3:['essence','startFlux','bulkhead','scope'],
+};
 // Per-level effect kinds. 'speed'/'threads'/'autoOffline' apply at live read
 // sites (no stat fold); 'spawnGap'/'surgeLuck'/'heraldLuck'/'echoDps' are
 // consumed by later plans (no fold yet); 'slow' folds into slowPct (effect

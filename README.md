@@ -16,7 +16,7 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 |---|---|
 | `npm run dev` | Dev server with hot reload |
 | `npm run build` | Static build into `dist/` |
-| `npm test` | Full suite (Vitest, 56 tests) |
+| `npm test` | Full suite (Vitest, 91 tests) |
 | `node scripts/sim.mjs` | Headless balance check — asserts first-run wall lands waves 40–60 + Academy projection |
 
 ## How a run works
@@ -30,7 +30,7 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 
 - **x1 / x2 / x4 + Pause** — game speed, top dock. Auto-pauses when the tab hides.
 - **Forge cards (in run, Flux)** — Railguns, Targeting, Hull, Range, Regen, Crit, Volley, Bounce. Each card shows description + current → next values; glowing cards are affordable.
-- **Workshop cards (menu, cores)** — 12 tracks in 3 categories (Offense: dmg/rate/crit/volley/bounce, Defense: maxHull/bulkhead/regen, Systems: range/scope/essence/startFlux). Menu scrolls with a sticky Launch bar; the arena stays visible behind it.
+- **Workshop cards (menu, cores)** — 12 tracks in 3 invest batches (Batch 1 open: dmg/rate/maxHull/range; Batch 2 at 100 lifetime core-equivalent: regen/crit/volley/bounce; Batch 3 at 500: essence/startFlux/bulkhead/scope). Locked batches show live invest progress; lifetime spend counts workshop + research + ult shards. Menu scrolls with a sticky Launch bar; the arena stays visible behind it.
 - **Collapse** — prestige once past wave 50.
 - **Retreat** — end the current run any time from the dock; same summary screen as death.
 - **Fresh start** — open the game with `?fresh=1` once (e.g. http://localhost:5173/?fresh=1) to wipe the save and boot clean, or use Wipe all data in the menu.
@@ -43,13 +43,14 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 - **Enemy curve** — HP bends up past wave 40 (continuous at 40), contact DPS quadrupled. Expect a stall ~wave 30, first collapse window 40–60.
 - **Essence audit** — only golden Cache-ship kills grant essence; no other source.
 
-## Laboratory (Tower-style research catalog)
+## Laboratory (102-line research ladder)
 
-- 12 research lines in 5 categories (menu Academy tab). Offense: **Gunnery** (+2% dmg/lv, 50), **Deadeye** (+0.3% crit/lv, 30), **Barrage** (+1 volley per 5 lvls, 20). Defense: **Plating** (+3% max hull/lv, 50), **Nanites** (+0.4 regen/s/lv, 50), **Engineering** (offline gains + auto-forge). Economy: **Salvage** (+3% flux/lv, 50), **Siphon** (+3% essence/lv, 30), **Broker** (−1% workshop core costs/lv, 20). Command: **Logistics** (speed x2/x4/x8 at 1/4/8), **Command** (extra threads at 2/4/6, skip-to-wave-10 at 5). Mastery: **Celerity** (+4% research speed/lv, 25).
-- Cost per level starts: `max(30s, 60 × 1.6^level × lineMult)` seconds of real time plus `1 + floor(level / 3)` cores upfront (offline progress capped at 12h).
-- Up to 4 research threads; threads 1–3 unlock at Command 2 / 4 / 6. One active research per thread.
+- 102 research lines in 10 families, weakest first: **Gunnery** 10, **Hull** 11, **Sensors** 11, **Salvage** 11, **Command** 10, **Mastery** 10, **Riftcraft** 9, **Aegis** 10, **Echoes** 10, **Exotics** 10.
+- Families unlock by best wave (Gunnery/Hull open, Sensors 30, Salvage/Command 60, Mastery 100, Riftcraft 150, Aegis/Echoes 250, Exotics 400); lines inside an unlocked family may need a higher personal best (gate shown on the card). Locked families render as sealed silhouette cards with live progress ("Best 42 / 60"); locked lines render dimmed + disabled and refuse to start.
+- Cost per level: `(1 + floor(level / 3))` cores upfront, discounted by Thrift (−2%/level, shown thrift-correct on every card); time is `max(30s, 60 × 1.6^level × lineMult)` seconds of real time (offline progress capped at 12h). Up to 4 research threads; threads 1–3 unlock at Command 2 / 4 / 6. One active research per thread.
 - **Switching** banks the interrupted research's invested time (cores are sunk — resume costs cores again; one bank slot per thread, a new switch discards the older bank). **Auto** toggle chains level+1 of the same line while cores afford, else the thread idles. **History** lists the last 50 completions.
-- **Milestone gates** (best wave): Deadeye + Siphon at 60, Barrage + Broker at 100, Celerity at 150. Locked lines show "Best N to unlock", render dimmed + disabled, and refuse to start; locked threads show their Command requirement dimmed + disabled the same way.
+- **Grandfathering** — old saves keep every level (Engineering moved under Mastery: its levels still apply, only new Engineering research needs Best 100). Locked-but-leveled lines show "Lv N kept".
+- New mechanics fed by the ladder: thorns reflect, shield absorb pool (refills on launch), kill splash, crit multiplier, slow fields (capped 50%), boss damage bonus, cache luck + quality, ult charge rate. Echo-damage, spawn-gap, surge/herald-luck lines are researched now and take effect in later updates.
 
 ## Stellar Shards (ultimate currency)
 

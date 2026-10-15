@@ -20,7 +20,7 @@ describe('tabs', () => {
   it('tab store round-trips and rejects unknown ids', () => {
     setForgeTab('hull'); expect(getForgeTab()).toBe('hull');
     setForgeTab('nope'); expect(getForgeTab()).toBe('hull');
-    setWsTab('systems'); expect(getWsTab()).toBe('systems');
-    setWsTab('nope'); expect(getWsTab()).toBe('systems');
+    setWsTab('batch2'); expect(getWsTab()).toBe('batch2');
+    setWsTab('nope'); expect(getWsTab()).toBe('batch2');
   });
 });

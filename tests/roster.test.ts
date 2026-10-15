@@ -19,6 +19,7 @@ describe('roster', () => {
   });
   it('new workshop tracks persist and apply', () => {
     const s = freshState(); s.cores = 500;
+    s.lifetimeCoresSpent = 500; // batch 3 invest ladder: essence/startFlux need 500 lifetime
     expect(buyWorkshop(s, 'essence')).toBe(true);
     expect(buyWorkshop(s, 'startFlux')).toBe(true);
     expect((s.workshop ?? {}).essence).toBe(1);

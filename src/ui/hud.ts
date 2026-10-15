@@ -1,9 +1,9 @@
 import type {GameState} from '../game/state.js';import {upgradeCost, type Stat} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost, type WorkshopStat} from '../state/workshop.js';
 import {waveIntel} from '../game/spawning.js';
 import {FORGE_CATS, WS_CATS, getForgeTab, getWsTab} from './tabs.js';
-import {ULT_COST, ULT_CHARGE_MAX, fluxForKill, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, WAVESKIP_CMD, LAB_LINE_GATE, type UltId} from '../sim/balance.js';
+import {ULT_COST, ULT_CHARGE_MAX, fluxForKill, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, WAVESKIP_CMD, WS_BATCH_COST, type UltId} from '../sim/balance.js';
 import {ULTS, canFire} from '../game/ultimates.js';
-import {TRAIN_SKILLS, THREADS, RESEARCH_LINES, lineLevel, researchCost, lineUnlocked, lineResearchTime, labWorkshopCostMult, labSpeedMult, autoOn, labHistory, trainingLevel, speedUnlocked, type LineId, type LineDef} from '../state/training.js';
+import {TRAIN_SKILLS, THREADS, RESEARCH_LINES, FAMILIES, lineLevel, researchCost, lineUnlocked, lineGate, familyProgress, wsBatchUnlocked, wsBatchOf, lifetimeCores, lineResearchTime, labWorkshopCostMult, labSpeedMult, autoOn, labHistory, trainingLevel, speedUnlocked, type LineId, type LineDef, type FamilyId} from '../state/training.js';
 import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
 const FORGE_STATS:Stat[]=['dmg','rate','maxHull','range','regen','crit','volley','bounce'];
@@ -46,15 +46,27 @@ export function renderHud(s:GameState):void{
   }
   const w=(s as unknown as {workshop?:Record<string,number>}).workshop??{};
   const wmult=labWorkshopCostMult(s);
+  const invested=lifetimeCores(s);
+  txt('ws-invest-line',`Lifetime invested: ${invested} core-equivalent (workshop + research + ult shards)`);
   for(const st of WORKSHOP_STATS){
     const d=describeWorkshop(st as WorkshopStat);
     const lvl=w[st]??0;
+    const batch=wsBatchOf(st);
+    const open=wsBatchUnlocked(s,batch);
+    const need=WS_BATCH_COST[batch-1]??0;
     txt(`card-ws-name-${st}`,d.name);
     txt(`card-ws-desc-${st}`,d.desc);
     txt(`card-ws-cur-${st}`,d.cur(s));
     txt(`card-ws-next-${st}`,d.next(s));
-    txt(`card-ws-blurb-${st}`,`Lv ${lvl} • ${workshopCost(st as WorkshopStat,lvl,wmult)} cores`);
-    setAfford(`card-ws-${st}`,`btn-ws-${st}`,(s.cores??0)>=workshopCost(st as WorkshopStat,lvl,wmult));
+    if(open){
+      txt(`card-ws-blurb-${st}`,`Lv ${lvl} • ${workshopCost(st as WorkshopStat,lvl,wmult)} cores`);
+      setAfford(`card-ws-${st}`,`btn-ws-${st}`,(s.cores??0)>=workshopCost(st as WorkshopStat,lvl,wmult));
+    }else{
+      txt(`card-ws-blurb-${st}`,`Batch ${batch} — invest ${need} core-equiv (${invested}/${need})`);
+      setAfford(`card-ws-${st}`,`btn-ws-${st}`,false);
+    }
+    const card=document.getElementById(`card-ws-${st}`);
+    if(card)card.setAttribute('aria-disabled',String(!open));
   }
   {
     const w = waveIntel(s.wave);
@@ -78,7 +90,17 @@ export function renderHud(s:GameState):void{
     }
     for (const c of WS_CATS) {
       const b = document.getElementById(`tab-ws-${c.id}`);
-      if (b) b.classList.toggle('on', c.id === wactive.id);
+      if (b) {
+        b.classList.toggle('on', c.id === active.id);
+        const m = /^batch([123])$/.exec(c.id);
+        if (m) {
+          const batch = Number(m[1]);
+          const need = WS_BATCH_COST[batch - 1] ?? 0;
+          const open = wsBatchUnlocked(s, batch);
+          b.textContent = open || need <= 0 ? c.label : `${c.label} (${invested}/${need})`;
+          b.setAttribute('aria-disabled', String(!open));
+        }
+      }
     }
     const ultSec = document.getElementById('ws-ultimates');
     if (ultSec) ultSec.style.display = wactive.id === 'ultimates' ? '' : 'none';
@@ -134,14 +156,13 @@ export function renderAcademy(s:GameState):void{
       const b = document.getElementById(`btn-train-${th}-${sk}`) as HTMLButtonElement | null;
       if(b){ b.disabled = locked || !!r || !lineUnlocked(s, sk, best); b.classList.toggle('on', !!r && r.skill === sk); }
     }
-    // Line picker: options built once (grouped by category), value + locks synced per frame.
+    // Line picker: options built once (grouped by family, ladder order), value + locks synced per frame.
     const pick = document.getElementById(`lab-pick-${th}`) as HTMLSelectElement | null;
     if(pick && pick.childElementCount === 0){
-      for(const cat of LAB_CAT_ORDER){
+      for(const f of FAMILIES){
         const g = document.createElement('optgroup');
-        g.label = cat[0].toUpperCase() + cat.slice(1);
-        for(const [id, l] of Object.entries(RESEARCH_LINES) as [LineId, LineDef][]){
-          if(l.cat !== cat) continue;
+        g.label = FAM_LABEL[f.id] ?? f.id;
+        for(const [id] of LINES_BY_FAM[f.id] ?? []){
           const o = document.createElement('option');
           o.value = id; o.textContent = labPickLabel(s, id, best);
           g.appendChild(o);
@@ -217,20 +238,49 @@ export function renderLabHistory(s:GameState):void{
     host.appendChild(d);
   }
 }
-const LAB_CAT_ORDER = ['offense','defense','economy','command','mastery'] as const;
+const FAM_LABEL: Record<string, string> = {
+  gunnery: 'Gunnery', hull: 'Hull', sensors: 'Sensors', salvage: 'Salvage', command: 'Command',
+  mastery: 'Mastery', riftcraft: 'Riftcraft', aegis: 'Aegis', echoes: 'Echoes', exotics: 'Exotics',
+};
+// Lines grouped by family in FAMILIES ladder order (built once at module load).
+const LINES_BY_FAM: Record<string, [LineId, LineDef][]> = {};
+for (const f of FAMILIES) LINES_BY_FAM[f.id] = [];
+for (const [id, l] of Object.entries(RESEARCH_LINES) as [LineId, LineDef][]) {
+  (LINES_BY_FAM[l.fam] ??= []).push([id, l]);
+}
 function labPickLabel(s: GameState, id: LineId, best: number): string {
   const l = RESEARCH_LINES[id];
-  const gate = LAB_LINE_GATE[id] ?? 0;
   const base = `${l.name} (Lv ${lineLevel(s, id)}/${l.max})`;
-  return best < gate ? `${base} — Best ${gate}` : base;
+  return lineUnlocked(s, id, best) ? base : `${base} — Best ${lineGate(id)}`;
 }
 function labStatus(id: LineId, s: GameState, best: number): string {
   const l = RESEARCH_LINES[id];
   const lvl = lineLevel(s, id);
-  const gate = LAB_LINE_GATE[id] ?? 0;
-  if (best < gate) return `Locked — Best ${gate} to unlock`;
+  const gate = lineGate(id);
+  // Grandfathering: levels earned before a ladder move still apply; only new
+  // research needs the gate (e.g. Engineering moved under Mastery, Best 100).
+  if (!lineUnlocked(s, id, best)) return lvl > 0 ? `Lv ${lvl} kept — Best ${gate} to research further` : `Locked — Best ${gate} to unlock`;
   if (lvl >= l.max) return `MAX ${l.max}`;
-  return `Lv ${lvl}/${l.max} • ${lineResearchTime(id, lvl)}s • ${researchCost(id, lvl)} cores`;
+  return `Lv ${lvl}/${l.max} • ${lineResearchTime(id, lvl)}s • ${researchCost(id, lvl, s)} cores`;
+}
+const labBuiltFam = new Set<string>();
+function buildFamLines(host: HTMLElement, fam: FamilyId): void {
+  const anchor = document.getElementById(`lab-fam-lock-${fam}`);
+  for (const [id, l] of LINES_BY_FAM[fam] ?? []) {
+    const card = document.createElement('div');
+    card.className = 'card'; card.id = `lab-line-${id}`;
+    const nm = document.createElement('div');
+    nm.className = 'card-name'; nm.id = `lab-line-name-${id}`; nm.textContent = l.name;
+    const ds = document.createElement('div');
+    ds.className = 'card-desc'; ds.id = `lab-line-desc-${id}`; ds.textContent = l.desc;
+    const row = document.createElement('div');
+    row.className = 'card-cur-next';
+    const sp = document.createElement('span');
+    sp.id = `lab-line-status-${id}`;
+    row.appendChild(sp);
+    card.append(nm, ds, row);
+    host.insertBefore(card, anchor?.nextSibling ?? null);
+  }
 }
 export function renderLabLines(s:GameState):void{
   if(typeof document==='undefined')return;
@@ -238,36 +288,50 @@ export function renderLabLines(s:GameState):void{
   if(!host)return;
   const best=Math.max((s as unknown as {best?:number}).best ?? 0, s.wave ?? 0);
   if(host.childElementCount===0){
-    for(const cat of LAB_CAT_ORDER){
+    for(const f of FAMILIES){
       const h=document.createElement('div');
-      h.className='card-name'; h.id=`lab-cat-${cat}`;
-      h.textContent=cat[0].toUpperCase()+cat.slice(1);
+      h.className='lab-fam'; h.id=`lab-fam-${f.id}`;
       host.appendChild(h);
-      for(const [id, l] of Object.entries(RESEARCH_LINES) as [LineId, LineDef][]){
-        if(l.cat!==cat)continue;
-        const card=document.createElement('div');
-        card.className='card'; card.id=`lab-line-${id}`;
-        const nm=document.createElement('div');
-        nm.className='card-name'; nm.id=`lab-line-name-${id}`; nm.textContent=l.name;
-        const ds=document.createElement('div');
-        ds.className='card-desc'; ds.id=`lab-line-desc-${id}`; ds.textContent=l.desc;
-        const row=document.createElement('div');
-        row.className='card-cur-next';
-        const sp=document.createElement('span');
-        sp.id=`lab-line-status-${id}`;
-        row.appendChild(sp);
-        card.appendChild(nm); card.appendChild(ds); card.appendChild(row);
-        host.appendChild(card);
-      }
+      const lock=document.createElement('div');
+      lock.className='card lab-silhouette'; lock.id=`lab-fam-lock-${f.id}`;
+      const nm=document.createElement('div');
+      nm.className='card-name'; nm.id=`lab-fam-lock-name-${f.id}`;
+      const ds=document.createElement('div');
+      ds.className='card-desc'; ds.id=`lab-fam-lock-desc-${f.id}`;
+      const bar=document.createElement('div');
+      bar.className='lab-progress lab-fam-progress';
+      const fill=document.createElement('div');
+      fill.className='lab-progress-fill'; fill.id=`lab-fam-fill-${f.id}`;
+      bar.appendChild(fill);
+      lock.append(nm, ds, bar);
+      host.appendChild(lock);
     }
   }
-  for(const [id, l] of Object.entries(RESEARCH_LINES) as [LineId, LineDef][]){
-    txt(`lab-line-name-${id}`,l.name);
-    txt(`lab-line-desc-${id}`,l.desc);
-    txt(`lab-line-status-${id}`,labStatus(id,s,best));
-    const card=document.getElementById(`lab-line-${id}`);
-    const gated = !lineUnlocked(s,id,best);
-    if(card){ card.classList.toggle('dim', gated); card.setAttribute('aria-disabled', String(gated)); }
+  for(const f of FAMILIES){
+    const prog = familyProgress(s, f.id, best);
+    const count = LINES_BY_FAM[f.id]?.length ?? 0;
+    const label = FAM_LABEL[f.id] ?? f.id;
+    txt(`lab-fam-${f.id}`, prog.unlocked
+      ? `${label} — ${count} lines — unlocked`
+      : `${label} — ${count} lines — Best ${prog.need} to unlock`);
+    const lockCard=document.getElementById(`lab-fam-lock-${f.id}`);
+    if(lockCard) lockCard.style.display = prog.unlocked ? 'none' : '';
+    if(!prog.unlocked) {
+      txt(`lab-fam-lock-name-${f.id}`,`??? — ${label} sealed`);
+      txt(`lab-fam-lock-desc-${f.id}`,`Best ${prog.need} to reveal • progress ${prog.have}/${prog.need}`);
+      const fill=document.getElementById(`lab-fam-fill-${f.id}`);
+      if(fill) fill.style.width = prog.need > 0 ? `${Math.min(100, Math.round(prog.have / prog.need * 100))}%` : '100%';
+      continue;
+    }
+    if(!labBuiltFam.has(f.id)){ buildFamLines(host, f.id); labBuiltFam.add(f.id); }
+    for(const [id] of LINES_BY_FAM[f.id] ?? []){
+      txt(`lab-line-name-${id}`,RESEARCH_LINES[id].name);
+      txt(`lab-line-desc-${id}`,RESEARCH_LINES[id].desc);
+      txt(`lab-line-status-${id}`,labStatus(id,s,best));
+      const card=document.getElementById(`lab-line-${id}`);
+      const gated = !lineUnlocked(s,id,best);
+      if(card){ card.classList.toggle('dim', gated); card.setAttribute('aria-disabled', String(gated)); }
+    }
   }
 }
 export function renderAugmentModal(s:GameState):void{

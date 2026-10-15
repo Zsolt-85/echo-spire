@@ -91,6 +91,7 @@ canvas{border:1px solid #1e3a5f;border-radius:8px;position:sticky;top:12px;}
   .card,.card .card-buy{transition:none;}
   .tabbar button,.menu-danger button{transition:none;}
   .lab-progress-fill{transition:none;}
+  .lab-silhouette{transition:none;}
 }
 .lab-progress{height:10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);overflow:hidden;}
 .lab-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#5eead4,#a78bfa);transition:width 200ms ease;}
@@ -98,4 +99,9 @@ canvas{border:1px solid #1e3a5f;border-radius:8px;position:sticky;top:12px;}
 .lab-pick:focus-visible{outline:2px solid var(--neon);outline-offset:2px;}
 .lab-pick option,.lab-pick optgroup{background:#0b1220;color:#e2e8f0;}
 .lab-history{display:flex;flex-direction:column;gap:4px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;}
+.lab-fam{font-family:Orbitron,system-ui,sans-serif;font-weight:700;font-size:14px;color:#fff;margin-top:10px;letter-spacing:1px;}
+.lab-silhouette{border-style:dashed;opacity:.75;background:rgba(255,255,255,.02);transition:box-shadow 200ms ease,opacity 200ms ease,border-color 200ms ease;}
+.lab-silhouette .card-name{color:#94a3b8;}
+.lab-fam-progress{margin-top:6px;}
+#ws-invest-line{margin:6px 0;}
 .card .card-buy.on{background:linear-gradient(90deg,#5eead4,#38bdf8);color:#04211d;font-weight:700;border-color:transparent;}

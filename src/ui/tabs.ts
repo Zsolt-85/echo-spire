@@ -6,12 +6,12 @@ export const FORGE_CATS: TabCat[] = [
   { id: 'systems', label: 'Systems', stats: ['range'] },
 ];
 export const WS_CATS: TabCat[] = [
-  { id: 'offense', label: 'Offense', stats: ['dmg', 'rate', 'crit', 'volley', 'bounce'] },
-  { id: 'defense', label: 'Defense', stats: ['maxHull', 'bulkhead', 'regen'] },
-  { id: 'systems', label: 'Systems', stats: ['range', 'scope', 'essence', 'startFlux'] },
+  { id: 'batch1', label: 'Batch 1', stats: ['dmg', 'rate', 'maxHull', 'range'] },
+  { id: 'batch2', label: 'Batch 2', stats: ['regen', 'crit', 'volley', 'bounce'] },
+  { id: 'batch3', label: 'Batch 3', stats: ['essence', 'startFlux', 'bulkhead', 'scope'] },
   { id: 'ultimates', label: 'Ultimates', stats: [] },
 ];
-let forgeTab = 'weapons', wsTab = 'offense';
+let forgeTab = 'weapons', wsTab = 'batch1';
 const valid = (cats: TabCat[], id: string): boolean => cats.some(c => c.id === id);
 export function getForgeTab(): string { return forgeTab; }
 export function setForgeTab(id: string): void { if (valid(FORGE_CATS, id)) forgeTab = id; }
