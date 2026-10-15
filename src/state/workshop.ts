@@ -1,11 +1,12 @@
 import { costFor, WORKSHOP_BASE, type WorkshopStat } from '../sim/balance.js';
 import type { GameState } from '../game/state.js';
+import { labWorkshopCostMult } from './training.js';
 export type { WorkshopStat };
 export const WORKSHOP_STATS: WorkshopStat[] = ['dmg','rate','maxHull','range','regen','crit','volley','bounce','essence','startFlux','bulkhead','scope'];
-export function workshopCost(stat: WorkshopStat, lvl: number): number { return costFor(WORKSHOP_BASE[stat].base, WORKSHOP_BASE[stat].growth, lvl); }
+export function workshopCost(stat: WorkshopStat, lvl: number, mult = 1): number { return Math.max(1, Math.floor(costFor(WORKSHOP_BASE[stat].base, WORKSHOP_BASE[stat].growth, lvl) * mult)); }
 export function buyWorkshop(s: GameState, stat: WorkshopStat): boolean {
   const lvl = s.workshop?.[stat] ?? 0;
-  const c = workshopCost(stat, lvl);
+  const c = workshopCost(stat, lvl, labWorkshopCostMult(s));
   if ((s.cores ?? 0) < c) return false;
   s.cores = (s.cores ?? 0) - c;
   s.workshop = s.workshop ?? {}; s.workshop[stat] = lvl + 1;

@@ -56,3 +56,20 @@ export const SHARD_W_MILESTONE=0;
 export const BOSS_EVERY=25;
 export const BOSS_HP_MULT=10;
 export const BOSS_DMG_MULT=3;
+// Tower-style laboratories (tower-labs plan Task 1): per-line caps, time
+// multipliers, milestone gates (best wave), and effect rates. All original
+// numbers; the four legacy lines keep generous caps so old saves keep levels.
+export type LabCat='offense'|'defense'|'economy'|'command'|'mastery';
+export const LAB_MIN_SECS=30;
+export const LAB_LINE_MAX:Record<string,number>={gunnery:50,deadeye:30,barrage:20,plating:50,nanites:50,engineering:50,salvage:50,siphon:30,broker:20,logistics:10,command:10,celerity:25};
+export const LAB_LINE_TIME_MULT:Record<string,number>={gunnery:1.0,deadeye:1.2,barrage:1.5,plating:1.0,nanites:1.2,engineering:1.0,salvage:1.0,siphon:1.3,broker:1.4,logistics:1.0,command:1.0,celerity:1.6};
+export const LAB_LINE_GATE:Record<string,number>={gunnery:0,deadeye:60,barrage:100,plating:0,nanites:0,engineering:0,salvage:0,siphon:60,broker:100,logistics:0,command:0,celerity:150};
+export const LAB_LINE_CAT:Record<string,LabCat>={gunnery:'offense',deadeye:'offense',barrage:'offense',plating:'defense',nanites:'defense',engineering:'defense',salvage:'economy',siphon:'economy',broker:'economy',logistics:'command',command:'command',celerity:'mastery'};
+export const LAB_DEADEYE_PCT=0.003;
+export const LAB_BARRAGE_EVERY=5;
+export const LAB_PLATING_PCT=0.03;
+export const LAB_NANITES_FLAT=0.4;
+export const LAB_SALVAGE_PCT=0.03;
+export const LAB_SIPHON_PCT=0.03;
+export const LAB_BROKER_PCT=0.01;
+export const LAB_CELERITY_PCT=0.04;

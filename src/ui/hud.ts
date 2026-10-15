@@ -1,9 +1,9 @@
 import type {GameState} from '../game/state.js';import {upgradeCost, type Stat} from './panel.js';import {applyAugment} from '../game/rifts.js';import {WORKSHOP_STATS,workshopCost, type WorkshopStat} from '../state/workshop.js';
 import {waveIntel} from '../game/spawning.js';
 import {FORGE_CATS, WS_CATS, getForgeTab, getWsTab} from './tabs.js';
-import {ULT_COST, ULT_CHARGE_MAX, fluxForKill, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, WAVESKIP_CMD, type UltId} from '../sim/balance.js';
+import {ULT_COST, ULT_CHARGE_MAX, fluxForKill, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, WAVESKIP_CMD, LAB_LINE_GATE, type UltId} from '../sim/balance.js';
 import {ULTS, canFire} from '../game/ultimates.js';
-import {TRAIN_SKILLS, THREADS, trainingLevel, speedUnlocked, type Skill} from '../state/training.js';
+import {TRAIN_SKILLS, THREADS, RESEARCH_LINES, lineLevel, researchCost, lineUnlocked, lineResearchTime, labWorkshopCostMult, trainingLevel, speedUnlocked, type Skill, type LineId, type LineDef} from '../state/training.js';
 import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 function txt(id:string,v:string){const el=document.getElementById(id);if(el)el.textContent=v;}
 const FORGE_STATS:Stat[]=['dmg','rate','maxHull','range','regen','crit','volley','bounce'];
@@ -45,6 +45,7 @@ export function renderHud(s:GameState):void{
     setAfford(`card-${st}`,`buy-${st}`,s.flux>=upgradeCost(st,lvl));
   }
   const w=(s as unknown as {workshop?:Record<string,number>}).workshop??{};
+  const wmult=labWorkshopCostMult(s);
   for(const st of WORKSHOP_STATS){
     const d=describeWorkshop(st as WorkshopStat);
     const lvl=w[st]??0;
@@ -52,8 +53,8 @@ export function renderHud(s:GameState):void{
     txt(`card-ws-desc-${st}`,d.desc);
     txt(`card-ws-cur-${st}`,d.cur(s));
     txt(`card-ws-next-${st}`,d.next(s));
-    txt(`card-ws-blurb-${st}`,`Lv ${lvl} • ${workshopCost(st as WorkshopStat,lvl)} cores`);
-    setAfford(`card-ws-${st}`,`btn-ws-${st}`,(s.cores??0)>=workshopCost(st as WorkshopStat,lvl));
+    txt(`card-ws-blurb-${st}`,`Lv ${lvl} • ${workshopCost(st as WorkshopStat,lvl,wmult)} cores`);
+    setAfford(`card-ws-${st}`,`btn-ws-${st}`,(s.cores??0)>=workshopCost(st as WorkshopStat,lvl,wmult));
   }
   {
     const w = waveIntel(s.wave);
@@ -133,6 +134,53 @@ export function renderAcademy(s:GameState):void{
     txt(`thread-status-${th}`, lvlLine);
     const lvTxt = TRAIN_SKILLS.map(sk => `${sk.slice(0,3)}:${levels[sk] ?? 0}`).join(' ');
     txt(`thread-levels-${th}`, locked ? '' : lvTxt);
+  }
+  renderLabLines(s);
+}
+const LAB_CAT_ORDER = ['offense','defense','economy','command','mastery'] as const;
+function labStatus(id: LineId, s: GameState, best: number): string {
+  const l = RESEARCH_LINES[id];
+  const lvl = lineLevel(s, id);
+  const gate = LAB_LINE_GATE[id] ?? 0;
+  if (best < gate) return `Locked — best ${gate} to unlock`;
+  if (lvl >= l.max) return `MAX ${l.max}`;
+  return `Lv ${lvl}/${l.max} • ${lineResearchTime(id, lvl)}s • ${researchCost(id, lvl)} cores`;
+}
+export function renderLabLines(s:GameState):void{
+  if(typeof document==='undefined')return;
+  const host=document.getElementById('lab-lines');
+  if(!host)return;
+  const best=Math.max((s as unknown as {best?:number}).best ?? 0, s.wave ?? 0);
+  if(host.childElementCount===0){
+    for(const cat of LAB_CAT_ORDER){
+      const h=document.createElement('div');
+      h.className='card-name'; h.id=`lab-cat-${cat}`;
+      h.textContent=cat[0].toUpperCase()+cat.slice(1);
+      host.appendChild(h);
+      for(const [id, l] of Object.entries(RESEARCH_LINES) as [LineId, LineDef][]){
+        if(l.cat!==cat)continue;
+        const card=document.createElement('div');
+        card.className='card'; card.id=`lab-line-${id}`;
+        const nm=document.createElement('div');
+        nm.className='card-name'; nm.id=`lab-line-name-${id}`; nm.textContent=l.name;
+        const ds=document.createElement('div');
+        ds.className='card-desc'; ds.id=`lab-line-desc-${id}`; ds.textContent=l.desc;
+        const row=document.createElement('div');
+        row.className='card-cur-next';
+        const sp=document.createElement('span');
+        sp.id=`lab-line-status-${id}`;
+        row.appendChild(sp);
+        card.appendChild(nm); card.appendChild(ds); card.appendChild(row);
+        host.appendChild(card);
+      }
+    }
+  }
+  for(const [id, l] of Object.entries(RESEARCH_LINES) as [LineId, LineDef][]){
+    txt(`lab-line-name-${id}`,l.name);
+    txt(`lab-line-desc-${id}`,l.desc);
+    txt(`lab-line-status-${id}`,labStatus(id,s,best));
+    const card=document.getElementById(`lab-line-${id}`);
+    if(card)card.classList.toggle('dim',!lineUnlocked(s,id,best));
   }
 }
 export function renderAugmentModal(s:GameState):void{

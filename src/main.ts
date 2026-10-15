@@ -1,7 +1,7 @@
 import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {applyWorkshop,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
 import {buyUlt,fireUlt,ULTS} from './game/ultimates.js';
-import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,THREADS,TRAIN_SKILLS} from './state/training.js';
+import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,applyLineEffects,THREADS,TRAIN_SKILLS} from './state/training.js';
 import {ENG_OFFLINE_PCT,WAVESKIP_CMD} from './sim/balance.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
@@ -45,12 +45,13 @@ try{
       if(elapsed>0)advanceOffline(s,elapsed);
     }catch{/* offline training best-effort */}
     progressTraining(s);
-    applyWorkshop(s);
+    applyWorkshop(s);applyLineEffects(s);
   }
 }catch{/* corrupt save: fresh start, backup preserved by loadGame */}
 let best=1;
 try{const sv:any=loadGame();if(sv){if(typeof sv.best==='number')best=Math.floor(sv.best);else if(typeof sv.wave==='number'&&sv.wave>=1)best=Math.floor(sv.wave);}}catch{}
-function persist():void{best=Math.max(best,s.wave);try{saveGame({...s,best} as any);}catch{}}
+(s as unknown as {best?:number}).best=best;
+function persist():void{best=Math.max(best,s.wave);(s as unknown as {best?:number}).best=best;try{saveGame({...s,best} as any);}catch{}}
 let lastDraw:number|null=null;
 function finishRun():void{const prev=best;const sum=endRun(s);persist();showGameOver(sum,prev);loop.setPaused(true);}
 const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(isDead(s))finishRun();},()=>{const now=performance.now();const dt=Math.min(0.1,(now-(lastDraw??now))/1000);lastDraw=now;ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,now,s,dt);ctx.restore();renderHud(s);});
@@ -87,7 +88,7 @@ wire('btn-speed-8',()=>{gateSpeed(8,'btn-speed-8',()=>{loop.setSpeed(8);markSpee
 markSpeed('btn-speed-1');
 let skipOn=false;
 wire('btn-skip',()=>{skipOn=!skipOn;const el=document.getElementById('btn-skip');if(el)el.classList.toggle('on',skipOn);});
-function launch():void{restartRun(s);applyWorkshop(s);if(skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;hideOverlays();loop.setPaused(false);}
+function launch():void{restartRun(s);applyWorkshop(s);applyLineEffects(s);if(skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;hideOverlays();loop.setPaused(false);}
 wire('btn-retreat',()=>{if(getPhase()==='run')finishRun();});
 wire('btn-collapse',()=>{  const gained=collapseRun(s);
   if(gained>0){persist();}
