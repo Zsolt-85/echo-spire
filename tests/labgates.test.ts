@@ -13,4 +13,9 @@ describe('lab gates', () => {
     s.training = { levels: {}, threads: {}, bank: {}, auto: {}, history: [] }; s.cores = 100;
     expect(startResearch(s, 't3', 'gunnery')).toBe(false);
   });
+  it('removed twins are gone from the catalog', () => {
+    const s = freshState() as any;
+    s.training = { levels: {}, threads: {}, bank: {}, auto: {}, history: [] }; s.cores = 100;
+    expect(startResearch(s, 't0', 'muzzle' as any)).toBe(false);
+  });
 });

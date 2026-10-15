@@ -20,9 +20,9 @@ describe('lab slots', () => {
     expect(trainingLevel(s, 'gunnery')).toBeGreaterThanOrEqual(1);
     expect(Object.keys(s.training.threads).length + (s.training.auto.t0 ? 1 : 0)).toBeGreaterThanOrEqual(1);
   });
-  it('celerity speeds research', () => {
-    const s = blank(); s.training.levels.celerity = 10;
-    expect(labSpeedMult(s)).toBeCloseTo(1.4, 5);
+  it('engineering speeds research', () => {
+    const s = blank(); s.training.levels.engineering = 10;
+    expect(labSpeedMult(s)).toBeCloseTo(1.5, 5);
   });
   it('research costs cores upfront and records history', () => {
     const s = blank(); s.training.levels.command = 6;

@@ -14,7 +14,7 @@
 //
 // Task 2 slot mechanics: switching banks invested time (cores are sunk —
 // resume costs cores again and re-checks affordability), auto-research
-// chains the next level while affordable, celerity multiplies research
+// chains the next level while affordable, engineering multiplies research
 // speed, completions append to a capped history.
 import { TRAIN_TIME_BASE_S, TRAIN_TIME_GROWTH, TRAIN_OFFLINE_CAP_HRS, GUNNERY_PCT, ENG_OFFLINE_PCT, THREAD_2_CMD, THREAD_3_CMD, THREAD_4_CMD, SPEED2_LOG, SPEED4_LOG, SPEED8_LOG, LAB_MIN_SECS, LAB_CELERITY_PCT, LAB_BROKER_PCT, FAMILIES as FAMS, LINE_SPECS, WS_BATCH_COST as WS_COST, WS_BATCH_STATS as WS_BSTATS, type FamilyId as FamId, type LabCat, type LineEffectKind, type LineSpec } from '../sim/balance.js';
 import type { GameState } from '../game/state.js';
@@ -124,7 +124,10 @@ export function setAuto(s: GameState, thread: string, on: boolean): void {
 export function autoOn(s: GameState, thread: string): boolean { return store(s).auto[thread] ?? false; }
 export function bankedMs(s: GameState, thread: string): number { return store(s).bank[thread]?.investedMs ?? 0; }
 export function labHistory(s: GameState): LabHistoryEntry[] { return store(s).history; }
-export function labSpeedMult(s: GameState): number { return 1 + LAB_CELERITY_PCT * lineLevel(s, 'celerity'); }
+export function labSpeedMult(s: GameState): number {
+  const per = SPEC_BY_ID['engineering']?.per ?? LAB_CELERITY_PCT;
+  return 1 + per * lineLevel(s, 'engineering');
+}
 function completeThread(s: GameState, t: TrainStore, id: string, line: LineId, nowMs: number): void {
   const lvl = (t.levels[line] ?? 0) + 1;
   t.levels[line] = lvl;
@@ -171,14 +174,14 @@ export function speedUnlocked(s: GameState): 1 | 2 | 4 | 8 {
   return l >= SPEED8_LOG ? 8 : l >= SPEED4_LOG ? 4 : l >= SPEED2_LOG ? 2 : 1;
 }
 // --- Generated catalog: every line carries fam/cat/max/timeMult/costDiv/minBest ---
-export type LineDef = { fam: FamId; cat: LabCat; name: string; desc: string; max: number; timeMult: number; costDiv: number; minBest: number };
+export type LineDef = { fam: FamId; cat: LabCat; effect: LineEffectKind; name: string; desc: string; max: number; timeMult: number; costDiv: number; minBest: number };
 const SPEC_BY_ID: Record<string, LineSpec> = {};
 for (const sp of LINE_SPECS) SPEC_BY_ID[sp.id] = sp;
 export function specOf(line: LineId): LineSpec | undefined { return SPEC_BY_ID[line]; }
 export const RESEARCH_LINES: Record<string, LineDef> = {};
 for (const sp of LINE_SPECS) {
   RESEARCH_LINES[sp.id] = {
-    fam: sp.fam,
+    fam: sp.fam, effect: sp.effect,
     cat: (FAMS.find(f => f.id === sp.fam)?.cat ?? 'mastery') as LabCat,
     name: sp.name, desc: sp.desc, max: sp.max,
     timeMult: sp.timeMult, costDiv: sp.costDiv, minBest: sp.minBest,
@@ -244,6 +247,63 @@ export function researchCost(line: LineId, level: number, s?: GameState): number
 export function lineResearchTime(line: LineId, level: number): number {
   const mult = RESEARCH_LINES[line]?.timeMult ?? 1;
   return Math.max(LAB_MIN_SECS, Math.round(researchTime(level) * mult));
+}
+// --- Dedupe migration (dedupe-hub Task 1): one line per effect. Removed twin
+// levels fold into the survivor (levels summed, capped, overflow refunded as
+// cores 1:1). Banked/active research remaps to the survivor; history keeps its
+// stored ids untouched. Runs once per save via the `_deduped` guard flag.
+const DEDUP_MAP: Record<string, LineId> = {
+  muzzle: 'gunnery', ballistics: 'gunnery', drill: 'gunnery', mandate: 'gunnery', supremacy: 'gunnery', apocalypse: 'gunnery', ancestor: 'gunnery', genesis: 'gunnery', alpha: 'gunnery',
+  reclaimer: 'salvage', smelter: 'salvage', fence: 'salvage', ledger: 'salvage', mastery: 'salvage', singularity: 'salvage', vestige: 'salvage', tide: 'salvage', eschaton: 'salvage',
+  haunt: 'remnant', wraith: 'remnant', spectre: 'remnant', eidolon: 'remnant', eternal: 'remnant', infinite: 'remnant',
+  bulwark: 'plating', fortify: 'plating', lattice: 'plating', rampart: 'plating', palisade: 'plating',
+  bastion: 'ablative', ward: 'ablative', haven: 'ablative', immovable: 'ablative', paradigm: 'ablative',
+  keen: 'deadeye', lockon: 'deadeye', periscope: 'deadeye', omega: 'deadeye',
+  aegis: 'retribution', redemption: 'retribution', martyr: 'retribution', axiom: 'retribution',
+  spotlight: 'tracker', triangulation: 'tracker', breach: 'tracker', titan: 'tracker',
+  prospector: 'siphon', motherlode: 'siphon', clarity: 'siphon', reliquary: 'siphon',
+  momentum: 'focus', transcend: 'focus', maelstrom: 'focus', nova: 'focus',
+  marrow: 'nanites', sanctuary: 'nanites',
+  phoenix: 'secondwind', seraph: 'secondwind',
+  overwatch: 'farsight', deepfield: 'farsight',
+  augur: 'sweep', cachewise: 'sweep',
+  doctrine: 'muster', zenith: 'muster',
+  edict: 'charter', recall: 'charter',
+  eventide: 'assay',
+  apotheosis: 'vault',
+  celerity: 'engineering',
+};
+export function migrateDuplicates(s: GameState): { moved: number; refunded: number } {
+  const ax = s as unknown as { _deduped?: boolean };
+  if (ax._deduped) return { moved: 0, refunded: 0 };
+  const t = store(s);
+  let moved = 0;
+  let refunded = 0;
+  for (const [removed, survivor] of Object.entries(DEDUP_MAP)) {
+    const lvl = t.levels[removed] ?? 0;
+    if (lvl > 0) {
+      const max = RESEARCH_LINES[survivor]?.max ?? 0;
+      const cur = t.levels[survivor] ?? 0;
+      const room = Math.max(0, max - cur);
+      const take = Math.min(room, lvl);
+      if (take > 0) t.levels[survivor] = cur + take;
+      const overflow = lvl - take;
+      if (overflow > 0) s.cores = (s.cores ?? 0) + overflow;
+      moved += lvl;
+      refunded += overflow;
+      delete t.levels[removed];
+    } else if (removed in t.levels) {
+      delete t.levels[removed];
+    }
+    for (const th of Object.values(t.threads)) {
+      if ((th as ThreadState).skill === removed) (th as ThreadState).skill = survivor;
+    }
+    for (const b of Object.values(t.bank)) {
+      if ((b as BankedState).line === removed) (b as BankedState).line = survivor;
+    }
+  }
+  ax._deduped = true;
+  return { moved, refunded };
 }
 // Live read-site mults (no stat fold — safe to call anywhere).
 export function labFluxMult(s: GameState): number { return 1 + sumKind(s, 'fluxPct'); }
@@ -357,7 +417,7 @@ export function applyLineEffects(s: GameState): void {
   (s as unknown as { _fluxMult?: number })._fluxMult = labFluxMult(s);
   const em = (s as unknown as { _essenceMult?: number })._essenceMult ?? 1;
   (s as unknown as { _essenceMult?: number })._essenceMult = em * prodKind(s, 'essencePct');
-  // logistics/command/engineering/celerity/thrift/broker/offline lines apply
+  // logistics/command/engineering/thrift/broker/offline lines apply
   // at live read sites (speedUnlocked, thread gates, auto-forge, offline,
   // research costs, workshop costs) — no fold. spawnGap/surgeLuck/
   // heraldLuck/echoDps feed later plans — no fold yet.

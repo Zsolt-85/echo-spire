@@ -4,6 +4,7 @@ import { freshState } from '../src/game/state.js';
 import { RESEARCH_LINES, lineLevel, researchCost, lineUnlocked, applyLineEffects } from '../src/state/training.js';
 describe('labs catalog', () => {
   it('every line has category, cap, and scaling time', () => {
+    expect(Object.keys(RESEARCH_LINES).length).toBe(33);
     for (const [id, l] of Object.entries(RESEARCH_LINES)) {
       expect(['offense','defense','economy','command','mastery']).toContain(l.cat);
       expect(l.max).toBeGreaterThan(0);

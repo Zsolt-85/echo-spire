@@ -3,14 +3,14 @@ import { describe, it, expect } from 'vitest';
 import { freshState } from '../src/game/state.js';
 import { RESEARCH_LINES, FAMILIES, familyUnlocked, wsBatchUnlocked } from '../src/state/training.js';
 describe('mega catalog', () => {
-  it('holds at least 100 lines in 10 ordered families', () => {
-    expect(Object.keys(RESEARCH_LINES).length).toBeGreaterThanOrEqual(100);
+  it('holds 33 lines in 10 ordered families', () => {
+    expect(Object.keys(RESEARCH_LINES).length).toBe(33);
     expect(FAMILIES.length).toBe(10);
     const gates = FAMILIES.map(f => f.best);
     expect([...gates].sort((a, b) => a - b)).toEqual(gates);
   });
-  it('old 12 ids still exist with levels intact', () => {
-    for (const id of ['gunnery','logistics','engineering','command','celerity']) {
+  it('old survivor ids still exist with levels intact', () => {
+    for (const id of ['gunnery','logistics','engineering','command','salvage']) {
       expect(RESEARCH_LINES[id]).toBeDefined();
     }
   });

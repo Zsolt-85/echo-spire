@@ -8,17 +8,17 @@ describe('ladder ui data', () => {
     const s = { best: 42 } as any;
     expect(familyUnlocked(s, 'salvage', 42)).toBe(false);
     const lines = Object.entries(RESEARCH_LINES).filter(([, l]: any) => l.fam === 'salvage');
-    expect(lines.length).toBeGreaterThanOrEqual(10);
+    expect(lines.length).toBe(5);
   });
   it('batch gates read lifetime investment', () => {
     const s = { lifetimeCoresSpent: 68 } as any;
     expect(wsBatchUnlocked(s, 2)).toBe(false);
   });
-  it('catalog holds 102 lines with exact family counts', () => {
-    expect(Object.keys(RESEARCH_LINES).length).toBe(102);
+  it('catalog holds 33 lines with exact family counts', () => {
+    expect(Object.keys(RESEARCH_LINES).length).toBe(33);
     const per: Record<string, number> = {};
     for (const l of Object.values(RESEARCH_LINES) as any[]) per[l.fam] = (per[l.fam] ?? 0) + 1;
-    expect(per).toEqual({ gunnery: 10, hull: 11, sensors: 11, salvage: 11, command: 10, mastery: 10, riftcraft: 9, aegis: 10, echoes: 10, exotics: 10 });
+    expect(per).toEqual({ gunnery: 7, hull: 5, sensors: 4, salvage: 5, command: 4, mastery: 3, riftcraft: 4, echoes: 1 });
     expect(FAMILIES.map(f => f.id)).toEqual(['gunnery', 'hull', 'sensors', 'salvage', 'command', 'mastery', 'riftcraft', 'aegis', 'echoes', 'exotics']);
   });
   it('line gates fold family and per-line minimums', () => {
@@ -26,7 +26,7 @@ describe('ladder ui data', () => {
     expect(lineGate('deadeye')).toBe(60);
     expect(lineGate('barrage')).toBe(100);
     expect(lineGate('engineering')).toBe(100);
-    expect(lineGate('eschaton')).toBe(400);
+    expect(lineGate('remnant')).toBe(250);
   });
   it('family progress reports have/need for locked teasers', () => {
     const s = { best: 42 } as any;
