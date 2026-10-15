@@ -50,11 +50,16 @@ function threadUnlocked(s: GameState, thread: string): boolean {
 function isLine(line: string): line is LineId { return (RESEARCH_LINES as Record<string, LineDef>)[line] !== undefined; }
 // Research costs cores upfront (sunk — switching never refunds). Resume of
 // the same banked line costs cores again. Unaffordable/maxed/busy/locked
-// threads refuse with false and leave state untouched.
-export function startResearch(s: GameState, thread: string, line: LineId, nowMs = Date.now()): boolean {
+// threads refuse with false and leave state untouched. Milestone-gated lines
+// (deadeye/siphon best 60, barrage/broker best 100, celerity best 150) refuse
+// unless the gate is met: pass the caller's current best wave explicitly, or
+// omit it to fall back to s.best (old 3-arg calls for ungated lines behave
+// exactly as before).
+export function startResearch(s: GameState, thread: string, line: LineId, nowMs = Date.now(), bestWave?: number): boolean {
   const t = store(s);
   if (!THREADS.includes(thread as never) || !isLine(line as string)) return false;
   if (t.threads[thread] || !threadUnlocked(s, thread)) return false;
+  if (!lineUnlocked(s, line, bestWave ?? 0)) return false;
   const lvl = lineLevel(s, line);
   if (lvl >= (RESEARCH_LINES[line]?.max ?? 0)) return false;
   const cost = researchCost(line, lvl);
@@ -74,12 +79,13 @@ export function startResearch(s: GameState, thread: string, line: LineId, nowMs 
 // new line. Cores for the interrupted research are NOT refunded; the new
 // line deducts cores again. Pre-checks run BEFORE banking, so a refused
 // switch leaves the running research untouched.
-export function switchResearch(s: GameState, thread: string, newLine: LineId, nowMs = Date.now()): boolean {
+export function switchResearch(s: GameState, thread: string, newLine: LineId, nowMs = Date.now(), bestWave?: number): boolean {
   const t = store(s);
   if (!THREADS.includes(thread as never) || !isLine(newLine as string)) return false;
   const r = t.threads[thread];
-  if (!r) return startResearch(s, thread, newLine, nowMs);
+  if (!r) return startResearch(s, thread, newLine, nowMs, bestWave);
   if (r.skill === newLine) return false;
+  if (!lineUnlocked(s, newLine, bestWave ?? 0)) return false;
   const lvl = lineLevel(s, newLine);
   if (lvl >= (RESEARCH_LINES[newLine]?.max ?? 0)) return false;
   if ((s.cores ?? 0) < researchCost(newLine, lvl)) return false;
@@ -89,7 +95,7 @@ export function switchResearch(s: GameState, thread: string, newLine: LineId, no
   const invested = Math.min(Math.max(0, (nowMs - startedAt) * mult), Math.max(0, durationMs));
   t.bank[thread] = { line: r.skill, investedMs: invested };
   delete t.threads[thread];
-  return startResearch(s, thread, newLine, nowMs);
+  return startResearch(s, thread, newLine, nowMs, bestWave);
 }
 export function setAuto(s: GameState, thread: string, on: boolean): void {
   const t = store(s);

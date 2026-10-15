@@ -43,11 +43,13 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 - **Enemy curve** — HP bends up past wave 40 (continuous at 40), contact DPS quadrupled. Expect a stall ~wave 30, first collapse window 40–60.
 - **Essence audit** — only golden Cache-ship kills grant essence; no other source.
 
-## Training Academy (idle threads that unlock features)
+## Laboratory (Tower-style research catalog)
 
-- Up to 4 research threads (menu Academy tab). Thread 0 always open; threads 1–3 unlock at Command 2 / 4 / 6. One active research per thread.
-- Research cost is real time: `60 × 1.6^level` seconds per level; offline progress capped at 12h.
-- **Gunnery** — +2% damage per level. **Logistics** — x2 speed at 1, x4 at 4, x8 at 8 (sim projects x2 within a day, x4 within 3 days). **Engineering** — auto-forge at 4, +5%/level offline Flux. **Command** — extra threads at 2/4/6, skip-to-wave-10 launch at 5.
+- 12 research lines in 5 categories (menu Academy tab). Offense: **Gunnery** (+2% dmg/lv, 50), **Deadeye** (+0.3% crit/lv, 30), **Barrage** (+1 volley per 5 lvls, 20). Defense: **Plating** (+3% max hull/lv, 50), **Nanites** (+0.4 regen/s/lv, 50), **Engineering** (offline gains + auto-forge). Economy: **Salvage** (+3% flux/lv, 50), **Siphon** (+3% essence/lv, 30), **Broker** (−1% workshop core costs/lv, 20). Command: **Logistics** (speed x2/x4/x8 at 1/4/8), **Command** (extra threads at 2/4/6, skip-to-wave-10 at 5). Mastery: **Celerity** (+4% research speed/lv, 25).
+- Cost per level starts: `max(30s, 60 × 1.6^level × lineMult)` seconds of real time plus `1 + floor(level / 3)` cores upfront (offline progress capped at 12h).
+- Up to 4 research threads; threads 1–3 unlock at Command 2 / 4 / 6. One active research per thread.
+- **Switching** banks the interrupted research's invested time (cores are sunk — resume costs cores again; one bank slot per thread, a new switch discards the older bank). **Auto** toggle chains level+1 of the same line while cores afford, else the thread idles. **History** lists the last 50 completions.
+- **Milestone gates** (best wave): Deadeye + Siphon at 60, Barrage + Broker at 100, Celerity at 150. Locked lines show "Best N to unlock", render dimmed + disabled, and refuse to start; locked threads show their Command requirement dimmed + disabled the same way.
 
 ## Stellar Shards (ultimate currency)
 

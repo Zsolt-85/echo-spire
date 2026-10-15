@@ -228,9 +228,19 @@ function run() {
 // --- src/state/training.ts researchTime (verbatim formula: 60 x 1.6^level) ---
 function researchTime(level) { return Math.round(60 * Math.pow(1.6, level)); }
 
+// --- tower-labs Task 3: per-line research clock (mirrors lineResearchTime +
+// labSpeedMult in src/state/training.ts with LAB_* values from
+// src/sim/balance.ts: floor 30s, celerity timeMult 1.6, +4%/level speed) ---
+const LAB_MIN_SECS = 30;
+const LAB_CELERITY_TIME_MULT = 1.6;
+const LAB_CELERITY_PCT = 0.04;
+function lineTime(timeMult, level) { return Math.max(LAB_MIN_SECS, Math.round(researchTime(level) * timeMult)); }
+
 // 30-day academy projection (Task 4): single thread t0 always busy,
 // researching logistics 0->4 then engineering 0->4 back-to-back. Command-gated
 // extra threads only speed this up, so this is the conservative schedule.
+// Celerity (best-150 gate) cannot move the early x2/x4 dates — it is projected
+// separately below as an effective-rate long-run segment (info only).
 function academyProjection() {
   let t = 0; // seconds of single-thread research
   const toLevel = (from, target) => { for (let l = from; l < target; l++) t += researchTime(l); };
@@ -241,6 +251,13 @@ function academyProjection() {
   console.log(`ACADEMY: x2 at ${x2s}s (day ${day(x2s).toFixed(3)}), x4 at ${x4s}s (day ${day(x4s).toFixed(3)}), auto-forge at ${afs}s (day ${day(afs).toFixed(3)}).`);
   const ok = day(x2s) <= 1 && day(x4s) <= 3;
   console.log(`ACADEMY VERDICT: ${ok ? 'PASS' : 'FAIL'} (need x2 day<=1, x4 day<=3)`);
+  // Long-run celerity segment: celerity 0->10 researched back-to-back once the
+  // best-150 gate is met, each level's wall time discounted by the effective
+  // rate earned so far (1 + 0.04 x completed celerity). Research is zero-meta
+  // for the combat wall, so this never feeds the wall verdict.
+  let ct = 0, cMult = 1;
+  for (let l = 0; l < 10; l++) { ct += lineTime(LAB_CELERITY_TIME_MULT, l) / cMult; cMult = 1 + LAB_CELERITY_PCT * (l + 1); }
+  console.log(`CELERITY: 0->10 in ${Math.round(ct)}s (day ${day(ct).toFixed(3)}) at compounding effective rate 1.00->${cMult.toFixed(2)}.`);
   return ok;
 }
 

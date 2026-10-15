@@ -123,17 +123,18 @@ export function renderAcademy(s:GameState):void{
   const cmd = trainingLevel(s, 'command');
   const mult = labSpeedMult(s);
   const now = Date.now();
+  const best = Math.max((s as unknown as {best?:number}).best ?? 0, s.wave ?? 0);
   for(const th of THREADS){
     const need = THREAD_NEED[th] ?? 0;
     const locked = cmd < need;
     const card = document.getElementById(`card-thread-${th}`);
-    if(card)card.style.display = locked ? 'none' : '';
+    if(card){ card.style.display = ''; card.classList.toggle('dim', locked); card.setAttribute('aria-disabled', String(locked)); }
     const r = threads[th];
     for(const sk of TRAIN_SKILLS){
       const b = document.getElementById(`btn-train-${th}-${sk}`) as HTMLButtonElement | null;
-      if(b){ b.disabled = locked || !!r; b.classList.toggle('on', !!r && r.skill === sk); }
+      if(b){ b.disabled = locked || !!r || !lineUnlocked(s, sk, best); b.classList.toggle('on', !!r && r.skill === sk); }
     }
-    // Line picker: options built once (grouped by category), value synced per frame.
+    // Line picker: options built once (grouped by category), value + locks synced per frame.
     const pick = document.getElementById(`lab-pick-${th}`) as HTMLSelectElement | null;
     if(pick && pick.childElementCount === 0){
       for(const cat of LAB_CAT_ORDER){
@@ -142,7 +143,7 @@ export function renderAcademy(s:GameState):void{
         for(const [id, l] of Object.entries(RESEARCH_LINES) as [LineId, LineDef][]){
           if(l.cat !== cat) continue;
           const o = document.createElement('option');
-          o.value = id; o.textContent = `${l.name} (Lv ${lineLevel(s, id)}/${l.max})`;
+          o.value = id; o.textContent = labPickLabel(s, id, best);
           g.appendChild(o);
         }
         pick.appendChild(g);
@@ -152,9 +153,16 @@ export function renderAcademy(s:GameState):void{
       pick.disabled = locked;
       const want = r?.skill ?? bank[th]?.line ?? pick.value;
       if(want && pick.value !== want) pick.value = want;
+      for(const o of Array.from(pick.querySelectorAll('option'))){
+        const id = o.value as LineId;
+        o.disabled = !lineUnlocked(s, id, best);
+        const label = labPickLabel(s, id, best);
+        if(o.textContent !== label) o.textContent = label;
+      }
     }
+    const picked = ((pick?.value ?? 'gunnery') as LineId);
     const sw = document.getElementById(`btn-switch-${th}`) as HTMLButtonElement | null;
-    if(sw) sw.disabled = locked;
+    if(sw) sw.disabled = locked || !lineUnlocked(s, picked, best);
     const au = document.getElementById(`btn-auto-${th}`) as HTMLButtonElement | null;
     if(au){
       au.disabled = locked;
@@ -210,11 +218,17 @@ export function renderLabHistory(s:GameState):void{
   }
 }
 const LAB_CAT_ORDER = ['offense','defense','economy','command','mastery'] as const;
+function labPickLabel(s: GameState, id: LineId, best: number): string {
+  const l = RESEARCH_LINES[id];
+  const gate = LAB_LINE_GATE[id] ?? 0;
+  const base = `${l.name} (Lv ${lineLevel(s, id)}/${l.max})`;
+  return best < gate ? `${base} — Best ${gate}` : base;
+}
 function labStatus(id: LineId, s: GameState, best: number): string {
   const l = RESEARCH_LINES[id];
   const lvl = lineLevel(s, id);
   const gate = LAB_LINE_GATE[id] ?? 0;
-  if (best < gate) return `Locked — best ${gate} to unlock`;
+  if (best < gate) return `Locked — Best ${gate} to unlock`;
   if (lvl >= l.max) return `MAX ${l.max}`;
   return `Lv ${lvl}/${l.max} • ${lineResearchTime(id, lvl)}s • ${researchCost(id, lvl)} cores`;
 }
@@ -252,7 +266,8 @@ export function renderLabLines(s:GameState):void{
     txt(`lab-line-desc-${id}`,l.desc);
     txt(`lab-line-status-${id}`,labStatus(id,s,best));
     const card=document.getElementById(`lab-line-${id}`);
-    if(card)card.classList.toggle('dim',!lineUnlocked(s,id,best));
+    const gated = !lineUnlocked(s,id,best);
+    if(card){ card.classList.toggle('dim', gated); card.setAttribute('aria-disabled', String(gated)); }
   }
 }
 export function renderAugmentModal(s:GameState):void{
