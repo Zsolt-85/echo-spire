@@ -26,6 +26,7 @@ export function renderHud(s:GameState):void{
   txt('hud-flux',String(Math.floor(s.flux)));
   txt('hud-essence',String(s.essence??0));
   txt('hud-cores',String(s.cores??0));
+  txt('hud-shards',String(s.shards??0));
   {
     const perKill = fluxForKill(s.wave);
     const perMin = Math.round((s.fluxEarned ?? 0) / Math.max(1, s.timeS ?? 0) * 60);
@@ -86,8 +87,8 @@ export function renderHud(s:GameState):void{
       const owned = !!s.ult?.[id];
       txt(`card-ult-name-${id}`, ULT_META[id].name);
       txt(`card-ult-desc-${id}`, ULT_META[id].desc);
-      txt(`card-ult-blurb-${id}`, owned ? 'Owned' : `${ULT_COST[id]} essence`);
-      setAfford(`card-ult-${id}`, `btn-ult-${id}`, !owned && (s.essence ?? 0) >= ULT_COST[id]);
+      txt(`card-ult-blurb-${id}`, owned ? 'Owned' : `${ULT_COST[id]} shards`);
+      setAfford(`card-ult-${id}`, `btn-ult-${id}`, !owned && (s.shards ?? 0) >= ULT_COST[id]);
     }
     const charge = Math.min(ULT_CHARGE_MAX, s.ultCharge ?? 0);
     const fill = document.getElementById('ult-charge-fill');

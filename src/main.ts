@@ -16,6 +16,7 @@ try{
     if(typeof saved.flux==='number')s.flux=saved.flux;
     if(typeof saved.essence==='number')s.essence=saved.essence;
     if(typeof saved.cores==='number')s.cores=saved.cores;
+    if(typeof (saved as unknown as {shards?:unknown}).shards==='number')s.shards=(saved as unknown as {shards:number}).shards;
     if(saved.levels&&typeof saved.levels==='object')s.levels=saved.levels;
     if(saved.workshop&&typeof saved.workshop==='object')s.workshop=saved.workshop;
     {const u=(saved as unknown as {ult?:unknown}).ult;

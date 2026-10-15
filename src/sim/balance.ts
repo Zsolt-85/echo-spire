@@ -22,12 +22,12 @@ export const LAB_TIME_GROWTH=1.6;
 export type WorkshopStat='dmg'|'rate'|'maxHull'|'range'|'regen'|'crit'|'volley'|'bounce'|'essence'|'startFlux'|'bulkhead'|'scope';
 export const WORKSHOP_BASE:Record<WorkshopStat,{base:number;growth:number}>={dmg:{base:1,growth:1.8},rate:{base:2,growth:1.8},maxHull:{base:2,growth:1.8},range:{base:3,growth:1.9},regen:{base:3,growth:1.9},crit:{base:5,growth:2.1},volley:{base:8,growth:2.2},bounce:{base:8,growth:2.2},essence:{base:4,growth:2.0},startFlux:{base:4,growth:2.0},bulkhead:{base:6,growth:2.0},scope:{base:6,growth:2.0}};
 // Ultimates, canonical home (src/game/ultimates.ts consumes). Charge 0-100,
-// +2 per kill, +10 per Cache kill. Unlock for essence: Nova 20, Overdrive 35,
-// Aegis 50. Nova 10x screen hit, Overdrive 8s rate-x3, Aegis 12s invulnerable.
+// +2 per kill, +10 per Cache kill. Unlock for shards: Nova 2, Overdrive 3,
+// Aegis 5. Nova 10x screen hit, Overdrive 8s rate-x3, Aegis 12s invulnerable.
 export const ULT_CHARGE_PER_KILL=2;
 export const ULT_CHARGE_PER_CACHE=10;
 export const ULT_CHARGE_MAX=100;
-export const ULT_COST={nova:20,overdrive:35,aegis:50} as const;
+export const ULT_COST={nova:2,overdrive:3,aegis:5} as const;
 export type UltId=keyof typeof ULT_COST;
 export const ULT_NOVA_MULT=10;
 export const ULT_OD_MULT=3;
@@ -48,3 +48,11 @@ export const SPEED4_LOG=4;
 export const SPEED8_LOG=8;
 export const AUTOFORGE_ENG=4;
 export const WAVESKIP_CMD=5;
+// Stellar Shards + dreadnought boss (Task 3): bosses are the only new spawn
+// type; ultimates moved off essence onto shards.
+export const SHARD_W_BOSS=1;
+export const SHARD_W_COLLAPSE=1;
+export const SHARD_W_MILESTONE=0;
+export const BOSS_EVERY=25;
+export const BOSS_HP_MULT=10;
+export const BOSS_DMG_MULT=3;

@@ -43,11 +43,14 @@ function costFor(base, growth, level) { return Math.round(base * Math.pow(growth
 function fluxForKill(wave) { return 3 + Math.floor(wave / 2); }
 function enemyHp(wave) { const base = 10 * Math.pow(1.05, wave); const tail = wave <= 40 ? Math.pow(wave, 1.25) : Math.pow(40, 1.25) + (Math.pow(wave, 1.35) - Math.pow(40, 1.35)); return Math.round(base + tail); }
 function enemyDmg(wave) { return Math.round(2 * Math.pow(1.025, wave) * 10) / 10; }
+const SHARD_W_BOSS = 1;
+const BOSS_EVERY = 25; const BOSS_HP_MULT = 10; const BOSS_DMG_MULT = 3;
+const ULT_COST = { nova: 2, overdrive: 3, aegis: 5 };
 
 // --- src/game/state.ts freshState (verbatim values) ---
 function freshState() {
   return { wave: 1, hull: 500, maxHull: 500, flux: 0, dmg: 12, rate: 1, range: 180,
-    ships: [], nextId: 1, _acc: 0, essence: 0, levels: {}, pendingAugment: null, augments: [],
+    ships: [], nextId: 1, _acc: 0, essence: 0, shards: 0, levels: {}, pendingAugment: null, augments: [],
     regen: 0, critCh: 0, volley: 0, bounce: 0, timeS: 0, _queue: 0, _timer: 0 };
 }
 
@@ -65,6 +68,12 @@ function spawnWave(s) {
       behavior: id % 3 === 2 ? 'roamer' : 'seeker', wander: Math.random() * Math.PI * 2 });
   }
   s._queue = budget - released; s._timer = 0;
+  if (s.wave % BOSS_EVERY === 0 && s.wave > 0) {
+    s.ships.push({ id: s.nextId++, kind: 'hex',
+      x: 280 + Math.cos(0) * 260, y: 280 + Math.sin(0) * 260,
+      hp: enemyHp(s.wave) * BOSS_HP_MULT, dmg: enemyDmg(s.wave) * BOSS_DMG_MULT,
+      speed: 10, essence: 0, boss: true, behavior: 'seeker', wander: 0 });
+  }
 }
 
 // --- src/game/rifts.ts maybeSpawnSurge (verbatim logic) ---
@@ -115,14 +124,14 @@ function tickSim(s, dt) {
       if (Math.random() < (s.critCh ?? 0)) dmg *= 2;
       t.hp -= dmg; hits++;
       if (t.hp <= 0) {
-        s.flux += fluxForKill(s.wave); if (t.cache) s.essence += t.essence * essenceMult;
+        s.flux += fluxForKill(s.wave); if (t.cache) s.essence += t.essence * essenceMult; if (t.boss) s.shards = (s.shards ?? 0) + SHARD_W_BOSS;
         const chains = Math.floor((s.bounce ?? 0) / 2);
         for (let c = 0; c < chains; c++) {
           let best = null, bestD = Infinity;
           for (const o of s.ships) { if (o === t || o.hp <= 0) continue; const d2 = (o.x - 280) ** 2 + (o.y - 280) ** 2; if (d2 < bestD) { bestD = d2; best = o; } }
           if (!best) break;
           best.hp -= s.dmg * 0.5;
-          if (best.hp <= 0) { s.flux += fluxForKill(s.wave); if (best.cache) s.essence += best.essence * essenceMult; }
+          if (best.hp <= 0) { s.flux += fluxForKill(s.wave); if (best.cache) s.essence += best.essence * essenceMult; if (best.boss) s.shards = (s.shards ?? 0) + SHARD_W_BOSS; }
         }
       }
     }
@@ -141,7 +150,7 @@ function tickSim(s, dt) {
       sh.x += dx / d * sh.speed * dt; sh.y += dy / d * sh.speed * dt;
     }
     if (d < 26) { s.hull -= sh.dmg * dt * 4; const alive = sh.hp > 0; sh.hp -= s.dmg * dt * 0.5;
-      if (alive && sh.hp <= 0) { s.flux += fluxForKill(s.wave); if (sh.cache) s.essence += sh.essence * essenceMult; } }
+      if (alive && sh.hp <= 0) { s.flux += fluxForKill(s.wave); if (sh.cache) s.essence += sh.essence * essenceMult; if (sh.boss) s.shards = (s.shards ?? 0) + SHARD_W_BOSS; } }
   }
   s.ships = s.ships.filter(x => x.hp > 0);
   s.hull = Math.min(s.maxHull, s.hull + (s.regen ?? 0) * dt);

@@ -33,13 +33,14 @@ export function drawSpace(ctx:CanvasRenderingContext2D,w:number,h:number,t:numbe
   // Enemy spacecrafts + golden Cache Ship, drawn from the shared SHIP_PATHS lib.
   if(s)for(const sh of s.ships){
     const path=SHIP_PATHS[sh.kind];if(!path)continue;
-    const cache=!!sh.cache;
+    const cache=!!sh.cache;const boss=!!(sh as {boss?:boolean}).boss;
+    const special=cache||boss;
     ctx.save();ctx.translate(sh.x,sh.y);
     ctx.rotate(Math.atan2(280-sh.y,280-sh.x)+Math.PI/2);
-    const sc=cache?1:0.8;ctx.scale(sc,sc);ctx.translate(-20,-18);
-    ctx.fillStyle=cache?CACHE_STYLE:(KIND_STYLE[sh.kind]??'#fff');
-    ctx.globalAlpha=cache?1:.9;ctx.fill(path);
-    if(cache){ctx.globalAlpha=1;ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke(path);}
+    const sc=boss?1.6:cache?1:0.8;ctx.scale(sc,sc);ctx.translate(-20,-18);
+    ctx.fillStyle=special?CACHE_STYLE:(KIND_STYLE[sh.kind]??'#fff');
+    ctx.globalAlpha=special?1:.9;ctx.fill(path);
+    if(special){ctx.globalAlpha=1;ctx.strokeStyle=boss?'#ffd700':'#fff';ctx.lineWidth=1.5;ctx.stroke(path);}
     ctx.restore();
   }
   ctx.globalAlpha=1;

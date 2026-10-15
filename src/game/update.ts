@@ -1,4 +1,4 @@
-import type {GameState} from './state.js';import {isDead} from './lifecycle.js';import {spawnWave} from './spawning.js';import {enemyHp,enemyDmg,fluxForKill,costFor,ULT_OD_MULT,BASE,AUTOFORGE_ENG} from '../sim/balance.js';import {ultChargeForKill} from './ultimates.js';import {maybeSpawnSurge,offerAugment} from './rifts.js';export {freshState} from './state.js';export {spawnWave} from './spawning.js';
+import type {GameState} from './state.js';import {isDead} from './lifecycle.js';import {spawnWave} from './spawning.js';import {enemyHp,enemyDmg,fluxForKill,costFor,ULT_OD_MULT,BASE,AUTOFORGE_ENG,SHARD_W_BOSS} from '../sim/balance.js';import {ultChargeForKill} from './ultimates.js';import {maybeSpawnSurge,offerAugment} from './rifts.js';export {freshState} from './state.js';export {spawnWave} from './spawning.js';
 import {trainingMult,trainingLevel} from '../state/training.js';import {buyUpgrade,type Stat} from '../ui/panel.js';
 function buyCheapest(s:GameState):void{
   const stats:Stat[]=['dmg','rate','maxHull','range','regen','crit','volley','bounce'];
@@ -32,12 +32,12 @@ export function tickSim(s:GameState,dt:number){
       if(Math.random()<(s.critCh??0))dmg*=2;
       t.hp-=dmg;hits++;
       pushFx({kind:'beam',x:280,y:280,tx:t.x,ty:t.y,ttl:0.12});
-      if(t.hp<=0){pushFx({kind:'spark',x:t.x,y:t.y,tx:t.x,ty:t.y,ttl:0.3});s.flux+=fluxForKill(s.wave);s.fluxEarned=(s.fluxEarned??0)+fluxForKill(s.wave);s.kills=(s.kills??0)+1;if(t.cache){const e=t.essence*essenceMult;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}ultChargeForKill(s,!!t.cache);
+      if(t.hp<=0){pushFx({kind:'spark',x:t.x,y:t.y,tx:t.x,ty:t.y,ttl:0.3});s.flux+=fluxForKill(s.wave);s.fluxEarned=(s.fluxEarned??0)+fluxForKill(s.wave);s.kills=(s.kills??0)+1;if(t.cache){const e=t.essence*essenceMult;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}if(t.boss)s.shards=(s.shards??0)+SHARD_W_BOSS;ultChargeForKill(s,!!t.cache);
         const chains=Math.floor((s.bounce??0)/2);
         for(let c=0;c<chains;c++){let best:null|typeof t=null;let bestD=Infinity;
           for(const o of s.ships){if(o===t||o.hp<=0)continue;const d2=(o.x-280)**2+(o.y-280)**2;if(d2<bestD){bestD=d2;best=o;}}
           if(!best)break;best.hp-=dmgEff*0.5;
-          if(best.hp<=0){pushFx({kind:'spark',x:best.x,y:best.y,tx:best.x,ty:best.y,ttl:0.3});s.flux+=fluxForKill(s.wave);s.fluxEarned=(s.fluxEarned??0)+fluxForKill(s.wave);s.kills=(s.kills??0)+1;if(best.cache){const e=best.essence*essenceMult;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}ultChargeForKill(s,!!best.cache);}}}
+          if(best.hp<=0){pushFx({kind:'spark',x:best.x,y:best.y,tx:best.x,ty:best.y,ttl:0.3});s.flux+=fluxForKill(s.wave);s.fluxEarned=(s.fluxEarned??0)+fluxForKill(s.wave);s.kills=(s.kills??0)+1;if(best.cache){const e=best.essence*essenceMult;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}if(best.boss)s.shards=(s.shards??0)+SHARD_W_BOSS;ultChargeForKill(s,!!best.cache);}}}
     }
     if(s.ships.some(x=>x.hp<=0))s.ships=s.ships.filter(x=>x.hp>0);}
   s._acc=shots;
@@ -47,7 +47,7 @@ export function tickSim(s:GameState,dt:number){
     if(d<26){if((s.timeS??0)>=(s.aegisUntil??0))s.hull-=sh.dmg*dt*4;
       if(!s.fx!.some(e=>e.kind==='flash'))pushFx({kind:'flash',x:280,y:280,tx:280,ty:280,ttl:0.15});
       const alive=sh.hp>0;sh.hp-=dmgEff*dt*0.5;
-      if(alive&&sh.hp<=0){pushFx({kind:'spark',x:sh.x,y:sh.y,tx:sh.x,ty:sh.y,ttl:0.3});s.flux+=fluxForKill(s.wave);s.fluxEarned=(s.fluxEarned??0)+fluxForKill(s.wave);s.kills=(s.kills??0)+1;if(sh.cache){const em=(s as unknown as {_essenceMult?:number})._essenceMult??1;const e=sh.essence*em;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}ultChargeForKill(s,!!sh.cache);}}}
+      if(alive&&sh.hp<=0){pushFx({kind:'spark',x:sh.x,y:sh.y,tx:sh.x,ty:sh.y,ttl:0.3});s.flux+=fluxForKill(s.wave);s.fluxEarned=(s.fluxEarned??0)+fluxForKill(s.wave);s.kills=(s.kills??0)+1;if(sh.cache){const em=(s as unknown as {_essenceMult?:number})._essenceMult??1;const e=sh.essence*em;s.essence+=e;s.essenceEarned=(s.essenceEarned??0)+e;}if(sh.boss)s.shards=(s.shards??0)+SHARD_W_BOSS;ultChargeForKill(s,!!sh.cache);}}}
   s.ships=s.ships.filter(x=>x.hp>0);
   s.hull=Math.min(s.maxHull,s.hull+(s.regen??0)*dt);
   s.hull=Math.max(0,s.hull); s.timeS=(s.timeS??0)+dt;

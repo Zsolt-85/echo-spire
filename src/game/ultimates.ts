@@ -1,4 +1,4 @@
-import { ULT_CHARGE_PER_KILL, ULT_CHARGE_PER_CACHE, ULT_CHARGE_MAX, ULT_COST, ULT_NOVA_MULT, ULT_OD_SECS, ULT_AEGIS_SECS, fluxForKill, type UltId } from '../sim/balance.js';
+import { ULT_CHARGE_PER_KILL, ULT_CHARGE_PER_CACHE, ULT_CHARGE_MAX, ULT_COST, ULT_NOVA_MULT, ULT_OD_SECS, ULT_AEGIS_SECS, fluxForKill, SHARD_W_BOSS, type UltId } from '../sim/balance.js';
 import type { GameState } from './state.js';
 export type { UltId };
 export { ULT_COST, ULT_CHARGE_MAX } from '../sim/balance.js';
@@ -13,8 +13,8 @@ export function canFire(s: GameState, id: UltId): boolean {
 export function buyUlt(s: GameState, id: UltId): boolean {
   if (s.ult?.[id]) return false;
   const c = ULT_COST[id];
-  if ((s.essence ?? 0) < c) return false;
-  s.essence -= c;
+  if ((s.shards ?? 0) < c) return false;
+  s.shards = (s.shards ?? 0) - c;
   s.ult = { nova: !!s.ult?.nova, overdrive: !!s.ult?.overdrive, aegis: !!s.ult?.aegis };
   s.ult[id] = true;
   return true;
@@ -35,6 +35,7 @@ export function fireUlt(s: GameState, id: UltId): boolean {
       const fk = fluxForKill(s.wave);
       s.flux += fk; s.fluxEarned = (s.fluxEarned ?? 0) + fk; s.kills = (s.kills ?? 0) + 1;
       if (t.cache) { const e = t.essence * essenceMult; s.essence += e; s.essenceEarned = (s.essenceEarned ?? 0) + e; }
+      if (t.boss) s.shards = (s.shards ?? 0) + SHARD_W_BOSS;
     }
   } else if (id === 'overdrive') { s.odUntil = (s.timeS ?? 0) + ULT_OD_SECS; }
   else { s.aegisUntil = (s.timeS ?? 0) + ULT_AEGIS_SECS; }
