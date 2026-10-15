@@ -294,6 +294,7 @@ export function applyLineDelta(s: GameState, line: LineId, newLevel: number): vo
     case 'ultCharge': s.ultChargeMult = (s.ultChargeMult ?? 0) + sp.per; break;
     case 'critMult': s.critMult = (s.critMult ?? 0) + sp.per; break;
     case 'splash': s.splashR = (s.splashR ?? 0) + sp.per; break;
+    case 'slow': s.slowPct = (s.slowPct ?? 0) + sp.per; break;
     case 'rangeFlat': s.range = (s.range ?? 0) + sp.per; break;
     case 'regenFlat': s.regen = (s.regen ?? 0) + sp.per; break;
     case 'volleyEvery': s.volley = (s.volley ?? 0) + stepDiff * sp.per; break;
@@ -325,7 +326,7 @@ export function applyLineEffects(s: GameState): void {
   s.thorns = sumKind(s, 'thorns');
   s.splashR = sumKind(s, 'splash');
   s.critMult = sumKind(s, 'critMult');
-  s.slowPct = 0; // no source lines yet (later plan)
+  s.slowPct = sumKind(s, 'slow'); // read site caps the effect at 0.5
   s.bossMult = sumKind(s, 'bossMult');
   s.cacheLuck = sumKind(s, 'cacheLuck');
   s.cacheQuality = sumKind(s, 'cacheQuality');

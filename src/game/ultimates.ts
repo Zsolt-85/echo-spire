@@ -5,7 +5,8 @@ export type { UltId };
 export { ULT_COST, ULT_CHARGE_MAX } from '../sim/balance.js';
 export const ULTS: UltId[] = ['nova', 'overdrive', 'aegis'];
 export function ultChargeForKill(s: GameState, cache: boolean): void {
-  s.ultCharge = Math.min(ULT_CHARGE_MAX, (s.ultCharge ?? 0) + (cache ? ULT_CHARGE_PER_CACHE : ULT_CHARGE_PER_KILL));
+  const gain=(cache ? ULT_CHARGE_PER_CACHE : ULT_CHARGE_PER_KILL)*(1+(s.ultChargeMult ?? 0));
+  s.ultCharge = Math.min(ULT_CHARGE_MAX, (s.ultCharge ?? 0) + gain);
 }
 function isDeadLike(s: GameState): boolean { return s.hull <= 0; }
 export function canFire(s: GameState, id: UltId): boolean {
@@ -28,7 +29,7 @@ export function fireUlt(s: GameState, id: UltId): boolean {
     const hit = s.dmg * ULT_NOVA_MULT;
     const essenceMult = (s as unknown as { _essenceMult?: number })._essenceMult ?? 1;
     for (const sh of s.ships) {
-      sh.hp -= hit;
+      sh.hp -= hit*(sh.boss ? 1+(s.bossMult ?? 0) : 1);
       s.fx = [...(s.fx ?? []), { kind: 'spark', x: 280, y: 280, tx: sh.x, ty: sh.y, ttl: 0.3 }];
     }
     const slain = s.ships.filter(x => x.hp <= 0);

@@ -98,9 +98,10 @@ export const FAMILIES:FamDef[]=[
 export const WS_BATCH_COST=[0,100,500];
 // Per-level effect kinds. 'speed'/'threads'/'autoOffline' apply at live read
 // sites (no stat fold); 'spawnGap'/'surgeLuck'/'heraldLuck'/'echoDps' are
-// consumed by later plans (no fold yet); the rest fold via applyLineEffects
+// consumed by later plans (no fold yet); 'slow' folds into slowPct (effect
+// capped 0.5 at the tick read site); the rest fold via applyLineEffects
 // (full, after applyWorkshop) and applyLineDelta (incremental, mid-run).
-export type LineEffectKind='dmgPct'|'maxHullPct'|'critAdd'|'volleyEvery'|'bounceEvery'|'rateStep'|'ratePct'|'critMult'|'splash'|'shieldFlat'|'shieldPct'|'thorns'|'regenFlat'|'regenPct'|'rangeFlat'|'bossMult'|'cacheLuck'|'cacheQuality'|'fluxPct'|'essencePct'|'ultCharge'|'offlinePct'|'researchDisc'|'costRed'|'startFlux'|'spawnGap'|'surgeLuck'|'heraldLuck'|'echoDps'|'speed'|'threads'|'autoOffline';
+export type LineEffectKind='dmgPct'|'maxHullPct'|'critAdd'|'volleyEvery'|'bounceEvery'|'rateStep'|'ratePct'|'critMult'|'splash'|'slow'|'shieldFlat'|'shieldPct'|'thorns'|'regenFlat'|'regenPct'|'rangeFlat'|'bossMult'|'cacheLuck'|'cacheQuality'|'fluxPct'|'essencePct'|'ultCharge'|'offlinePct'|'researchDisc'|'costRed'|'startFlux'|'spawnGap'|'surgeLuck'|'heraldLuck'|'echoDps'|'speed'|'threads'|'autoOffline';
 export type LineSpec={id:string;fam:FamilyId;effect:LineEffectKind;per:number;every?:number;max:number;timeMult:number;costDiv:number;minBest:number;name:string;desc:string};
 // Verbatim catalog tuples (id | per-level bonus | cap | timeMult | minBest);
 // costDiv is 1 for every line. Old-12 ids keep their legacy effect numbers.
@@ -139,6 +140,7 @@ export const LINE_SPECS:LineSpec[]=[
   {id:'periscope',fam:'sensors',effect:'critAdd',per:0.01,max:60,timeMult:1.1,costDiv:1,minBest:0,name:'Periscope',desc:'+1% crit chance per level.'},
   {id:'triangulation',fam:'sensors',effect:'bossMult',per:0.02,max:40,timeMult:1.3,costDiv:1,minBest:250,name:'Triangulation',desc:'+2% boss damage per level. Best 250 to unlock.'},
   {id:'augur',fam:'sensors',effect:'cacheLuck',per:0.03,max:20,timeMult:1.5,costDiv:1,minBest:250,name:'Augur',desc:'+3% cache luck per level. Best 250 to unlock.'},
+  {id:'drag',fam:'sensors',effect:'slow',per:0.04,max:20,timeMult:1.4,costDiv:1,minBest:150,name:'Drag',desc:'+4% slow per level (effect caps at 50%). Best 150 to unlock.'},
   // salvage (gate 60; siphon/broker/salvage preserved)
   {id:'reclaimer',fam:'salvage',effect:'fluxPct',per:0.03,max:50,timeMult:1.0,costDiv:1,minBest:0,name:'Reclaimer',desc:'+3% flux income per level.'},
   {id:'siphon',fam:'salvage',effect:'essencePct',per:0.03,max:30,timeMult:1.3,costDiv:1,minBest:60,name:'Siphon',desc:'+3% essence income per level. Best 60 to unlock.'},

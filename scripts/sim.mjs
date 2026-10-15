@@ -52,7 +52,9 @@ const ULT_COST = { nova: 2, overdrive: 3, aegis: 5 };
 function freshState() {
   return { wave: 1, hull: 500, maxHull: 500, flux: 0, dmg: 12, rate: 1, range: 180,
     ships: [], nextId: 1, _acc: 0, essence: 0, shards: 0, levels: {}, pendingAugment: null, augments: [],
-    regen: 0, critCh: 0, volley: 0, bounce: 0, timeS: 0, _queue: 0, _timer: 0 };
+    regen: 0, critCh: 0, volley: 0, bounce: 0, timeS: 0, _queue: 0, _timer: 0,
+    thorns: 0, shieldMax: 0, shield: 0, splashR: 0, critMult: 0, slowPct: 0,
+    bossMult: 0, cacheLuck: 0, cacheQuality: 0, ultChargeMult: 0 };
 }
 
 // --- src/game/spawning.ts (verbatim) ---
@@ -89,6 +91,34 @@ function maybeSpawnSurge(s) {
   return true;
 }
 
+// --- Task 2 mechanics mirror (zero in policy → wall unchanged; luck<=0
+// short-circuits before Math.random so the RNG stream is untouched) ---
+function bossMul(s, t) { return t.boss ? 1 + (s.bossMult ?? 0) : 1; }
+function creditKill(s, t) {
+  s.flux += fluxForKill(s.wave);
+  if (t.cache) s.essence += Math.round(t.essence * (1 + (s.cacheQuality ?? 0))) * (s._essenceMult ?? 1);
+  if (t.boss) s.shards = (s.shards ?? 0) + SHARD_W_BOSS;
+}
+function splashFrom(s, x, y) {
+  const r = s.splashR ?? 0, dmg = (s.dmg ?? 0) * 0.3;
+  if (!(r > 0) || !(dmg > 0)) return;
+  const r2 = r * r, slain = [];
+  for (const o of s.ships) {
+    if (o.hp <= 0) continue;
+    const dx = o.x - x, dy = o.y - y;
+    if (dx * dx + dy * dy > r2) continue;
+    o.hp -= dmg * bossMul(s, o);
+    if (o.hp <= 0) slain.push(o);
+  }
+  for (const d of slain) creditKill(s, d);
+  if (slain.length) s.ships = s.ships.filter(x => x.hp > 0);
+}
+function spawnBonusSurge(s) {
+  const rp = RIFT_POS[(Math.floor(s.wave / 15) % RIFT_POS.length + 1) % RIFT_POS.length];
+  s.ships.push({ id: s.nextId++, kind: 'hex', x: rp[0], y: rp[1],
+    hp: 200 + s.wave * 20, dmg: 0, speed: 14, essence: 15, cache: true });
+}
+
 // --- src/game/update.ts tickSim (verbatim logic, incl. Task 2 _acc fix) ---
 function tickSim(s, dt) {
   if ((s._queue ?? 0) > 0) {
@@ -105,6 +135,8 @@ function tickSim(s, dt) {
   }
   if (s.ships.length === 0 && (s._queue ?? 0) <= 0) {
     spawnWave(s); maybeSpawnSurge(s);
+    { const luck = s.cacheLuck ?? 0;
+      if (s.wave >= 10 && luck > 0 && Math.random() < Math.min(1, luck)) spawnBonusSurge(s); }
     if (s.wave >= 10 && s.wave % 10 === 0 && s._augmentWave !== s.wave && !s.pendingAugment) {
       s.pendingAugment = ['Split rounds +1 bounce', 'Crit surge +10%', 'Halo thorns'];
       s._augmentWave = s.wave;
@@ -122,36 +154,49 @@ function tickSim(s, dt) {
       if (t.hp <= 0) continue;
       if ((t.x - 280) ** 2 + (t.y - 280) ** 2 > s.range ** 2) continue;
       let dmg = s.dmg;
-      if (Math.random() < (s.critCh ?? 0)) dmg *= 2;
-      t.hp -= dmg; hits++;
+      if (Math.random() < (s.critCh ?? 0)) dmg *= 2 + (s.critMult ?? 0);
+      t.hp -= dmg * bossMul(s, t); hits++;
       if (t.hp <= 0) {
-        s.flux += fluxForKill(s.wave); if (t.cache) s.essence += t.essence * essenceMult; if (t.boss) s.shards = (s.shards ?? 0) + SHARD_W_BOSS;
+        creditKill(s, t); splashFrom(s, t.x, t.y);
         const chains = Math.floor((s.bounce ?? 0) / 2);
         for (let c = 0; c < chains; c++) {
           let best = null, bestD = Infinity;
           for (const o of s.ships) { if (o === t || o.hp <= 0) continue; const d2 = (o.x - 280) ** 2 + (o.y - 280) ** 2; if (d2 < bestD) { bestD = d2; best = o; } }
           if (!best) break;
-          best.hp -= s.dmg * 0.5;
-          if (best.hp <= 0) { s.flux += fluxForKill(s.wave); if (best.cache) s.essence += best.essence * essenceMult; if (best.boss) s.shards = (s.shards ?? 0) + SHARD_W_BOSS; }
+          best.hp -= s.dmg * 0.5 * bossMul(s, best);
+          if (best.hp <= 0) { creditKill(s, best); splashFrom(s, best.x, best.y); }
         }
       }
     }
     if (s.ships.some(x => x.hp <= 0)) s.ships = s.ships.filter(x => x.hp > 0);
   }
   s._acc = shots;
+  const sF = 1 - Math.min(0.5, Math.max(0, s.slowPct ?? 0));
+  const range2 = (s.range ?? 0) ** 2;
   for (const sh of s.ships) {
     const dx = 280 - sh.x, dy = 280 - sh.y, d = Math.hypot(dx, dy) || 1;
+    const sp = sh.speed * ((dx * dx + dy * dy <= range2) ? sF : 1);
     if (sh.behavior === 'roamer') {
       const px = -dy / d, py = dx / d;
       const tt = (s.timeS ?? 0) + dt;
       const strafe = Math.sin((sh.wander ?? 0) + tt) * 40 * dt;
-      sh.x += dx / d * sh.speed * dt + px * strafe; sh.y += dy / d * sh.speed * dt + py * strafe;
+      sh.x += dx / d * sp * dt + px * strafe; sh.y += dy / d * sp * dt + py * strafe;
       sh.wander = (sh.wander ?? 0) + 1.5 * dt;
     } else {
-      sh.x += dx / d * sh.speed * dt; sh.y += dy / d * sh.speed * dt;
+      sh.x += dx / d * sp * dt; sh.y += dy / d * sp * dt;
     }
-    if (d < 26) { s.hull -= sh.dmg * dt * 4; const alive = sh.hp > 0; sh.hp -= s.dmg * dt * 0.5;
-      if (alive && sh.hp <= 0) { s.flux += fluxForKill(s.wave); if (sh.cache) s.essence += sh.essence * essenceMult; if (sh.boss) s.shards = (s.shards ?? 0) + SHARD_W_BOSS; } }
+    if (d < 26) {
+      const contact = sh.dmg * dt * 4;
+      let rem = contact;
+      const sh0 = s.shield ?? 0;
+      if (sh0 > 0) { const abs = Math.min(sh0, rem); s.shield = sh0 - abs; rem -= abs; }
+      if (rem > 0) s.hull -= rem;
+      const th = s.thorns ?? 0;
+      let thornKill = false;
+      if (th > 0 && contact > 0) { sh.hp -= th * contact;
+        if (sh.hp <= 0) { creditKill(s, sh); splashFrom(s, sh.x, sh.y); thornKill = true; } }
+      const alive = !thornKill && sh.hp > 0; sh.hp -= s.dmg * dt * 0.5 * bossMul(s, sh);
+      if (alive && sh.hp <= 0) { creditKill(s, sh); splashFrom(s, sh.x, sh.y); } }
   }
   s.ships = s.ships.filter(x => x.hp > 0);
   s.hull = Math.min(s.maxHull, s.hull + (s.regen ?? 0) * dt);
