@@ -43,14 +43,13 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 - **Enemy curve** — HP bends up past wave 40 (continuous at 40), contact DPS quadrupled. Expect a stall ~wave 30, first collapse window 40–60.
 - **Essence audit** — only golden Cache-ship kills grant essence; no other source.
 
-## Laboratory (102-line research ladder)
+## Laboratory (33-line catalog)
 
-- 102 research lines in 10 families, weakest first: **Gunnery** 10, **Hull** 11, **Sensors** 11, **Salvage** 11, **Command** 10, **Mastery** 10, **Riftcraft** 9, **Aegis** 10, **Echoes** 10, **Exotics** 10.
-- Families unlock by best wave (Gunnery/Hull open, Sensors 30, Salvage/Command 60, Mastery 100, Riftcraft 150, Aegis/Echoes 250, Exotics 400); lines inside an unlocked family may need a higher personal best (gate shown on the card). Locked families render as sealed silhouette cards with live progress ("Best 42 / 60"); locked lines render dimmed + disabled and refuse to start.
+- 33 research lines in 10 families, one line per unique effect. Survivor map (verbatim — legacy id wins ties, else earliest gate) collapses twin tuples at boot, folding removed ids into survivors (levels summed, capped, overflow refunded as cores). Families unlock by best wave (Gunnery/Hull open, Sensors 30, Salvage/Command 60, Mastery 100, Riftcraft 150, Aegis/Echoes 250, Exotics 400); lines inside an unlocked family may need a higher personal best (gate shown on the card). Locked families render as sealed silhouette cards with live progress; locked lines render nothing but a single teaser line.
 - Cost per level: `(1 + floor(level / 3))` cores upfront, discounted by Thrift (−2%/level, shown thrift-correct on every card); time is `max(30s, 60 × 1.6^level × lineMult)` seconds of real time (offline progress capped at 12h). Up to 4 research threads; threads 1–3 unlock at Command 2 / 4 / 6. One active research per thread.
-- **Switching** banks the interrupted research's invested time (cores are sunk — resume costs cores again; one bank slot per thread, a new switch discards the older bank). **Auto** toggle chains level+1 of the same line while cores afford, else the thread idles. **History** lists the last 50 completions.
+- **Switching** banks the interrupted research's invested time (cores are sunk — resume costs cores again; one bank slot per thread, a new switch discards the older bank). **Auto** toggle chains level+1 of the same line while affordable, else the thread idles. **History** lists the last 50 completions.
 - **Grandfathering** — old saves keep every level (Engineering moved under Mastery: its levels still apply, only new Engineering research needs Best 100). Locked-but-leveled lines show "Lv N kept".
-- New mechanics fed by the ladder: thorns reflect, shield absorb pool (refills on launch), kill splash, crit multiplier, slow fields (capped 50%), boss damage bonus, cache luck + quality, ult charge rate. Echo-damage, spawn-gap, surge/herald-luck lines are researched now and take effect in later updates.
+- New mechanics fed by the ladder: thorns reflect, shield absorb pool (refills on launch), kill splash, crit multiplier, slow fields (capped 50%), boss damage bonus, cache luck + quality, ult charge rate. Lines feed into later plans (spawn-gap, surge/herald-luck, echo-damage).
 
 ## Stellar Shards (ultimate currency)
 
