@@ -1,8 +1,6 @@
 import type {GameState} from '../game/state.js';
 import {upgradeCost, type Stat} from './panel.js';
 import {applyAugment} from '../game/rifts.js';
-import {renderAugmentModal} from './menu.js';
-import {WORKSHOP_STATS, workshopCost, type WorkshopStat} from '../state/workshop.js';
 import {menuView} from '../ui/menu.js';
 import {waveIntel} from '../game/spawning.js';
 import {FORGE_CATS, WS_CATS, getForgeTab, getWsTab} from './tabs.js';
@@ -189,6 +187,25 @@ export function renderHud(s: GameState): void {
   if (b8) b8.style.display = sp >= 8 ? '' : 'none';
   const skip = document.getElementById('btn-skip');
   if (skip) skip.style.display = trainingLevel(s, 'command') >= WAVESKIP_CMD ? '' : 'none';
+  renderAugmentModal(s);
+}
+
+/** Augment picker (1-of-3 every 10 waves). Rebuilt only when the offer changes. */
+function renderAugmentModal(s: GameState): void {
+  const modal = document.getElementById('augment-modal');
+  const box = document.getElementById('augment-opts');
+  if (!modal || !box) return;
+  const opts = s.pendingAugment;
+  if (!opts || opts.length === 0) { modal.hidden = true; box.replaceChildren(); return; }
+  modal.hidden = false;
+  if (box.childElementCount === opts.length) return;
+  box.replaceChildren();
+  for (const o of opts) {
+    const b = document.createElement('button');
+    b.textContent = o;
+    b.addEventListener('click', () => { applyAugment(s, o); renderAugmentModal(s); });
+    box.appendChild(b);
+  }
 }
 
 function renderAcademy(s: GameState): void {

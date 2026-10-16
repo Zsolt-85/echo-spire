@@ -5,27 +5,25 @@ export function toMenu(): void { phase = 'menu'; render(); }
 export function toRun(): void { phase = 'run'; render(); }
 export function toOver(): void { phase = 'over'; render(); }
 function el(id: string): HTMLElement | null { return typeof document === 'undefined' ? null : document.getElementById(id); }
+function show(id: string, on: boolean): void { const n = el(id); if (n) n.hidden = !on; }
 function render(): void {
-  const m = el('menu-overlay'), o = el('over-overlay'), g = el('layout');
-  if (m) m.style.display = phase === 'menu' ? 'flex' : 'none';
-  if (o) o.style.display = phase === 'over' ? 'flex' : 'none';
+  show('menu-overlay', phase === 'menu');
+  show('over-overlay', phase === 'over');
+  const g = el('layout');
   if (g) g.style.visibility = 'visible';
-  const hv = el('menu-view-home'), wv = el('menu-view-workshop'), av = el('menu-view-academy');
-  const bt = el('tab-menu-home'), bw = el('tab-menu-workshop'), ba = el('tab-menu-academy');
-  const bb = el('btn-back');
-  if (hv) hv.style.display = _menuView === 'home' ? 'block' : 'none';
-  if (wv) wv.style.display = _menuView === 'workshop' ? 'block' : 'none';
-  if (av) av.style.display = _menuView === 'academy' ? 'block' : 'none';
-  if (bt) bt.classList.toggle('on', _menuView === 'home');
-  if (bw) bw.classList.toggle('on', _menuView === 'workshop');
-  if (ba) ba.classList.toggle('on', _menuView === 'academy');
-  if (bb) bb.style.display = _menuView !== 'home' ? 'inline-block' : 'none';
+  show('menu-view-home', _menuView === 'home');
+  show('menu-view-workshop', _menuView === 'workshop');
+  show('menu-view-academy', _menuView === 'academy');
+  show('btn-back', _menuView !== 'home');
+  for (const [id, on] of [['tab-menu-home', _menuView === 'home'], ['tab-menu-workshop', _menuView === 'workshop'], ['tab-menu-academy', _menuView === 'academy']] as const) {
+    const b = el(id); if (b) b.classList.toggle('on', on);
+  }
 }
 export type MenuView = 'home' | 'workshop' | 'academy';
 let _menuView: MenuView = 'home';
 export function menuView(): MenuView { return _menuView; }
 export function setMenuView(v: MenuView): void {
-  if (v === 'home' || v === 'workshop' || v === 'academy') _menuView = v;
+  if (v === 'home' || v === 'workshop' || v === 'academy') { _menuView = v; render(); }
 }
 export function showMenu(best: number): void {
   toMenu();
