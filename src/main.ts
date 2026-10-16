@@ -3,7 +3,7 @@ import {setForgeTab,setWsTab} from './ui/tabs.js';
 import {wsBatchOf,wsBatchUnlocked,lifetimeCores} from './state/training.js';
 import {WS_BATCH_COST} from './sim/balance.js';
 import {buyUlt,fireUlt,ULTS} from './game/ultimates.js';
-import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,switchResearch,setAuto,autoOn,THREADS,TRAIN_SKILLS,labOfflineMult,migrateDuplicates,type LineId} from './state/training.js';
+import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,switchResearch,setAuto,autoOn,THREADS,TRAIN_SKILLS,labOfflineMult,migrateDuplicates,RESEARCH_LINES,type LineId} from './state/training.js';
 import {WAVESKIP_CMD} from './sim/balance.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
