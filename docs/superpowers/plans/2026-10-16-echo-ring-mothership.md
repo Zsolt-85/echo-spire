@@ -36,18 +36,19 @@ Pure, DOM-free maths. Everything else builds on this.
   - `HULL_R = 50`, `BAND_W = 16`, `HULL_OUTER = 58`, `HULL_INNER = 42`
   - `CORE_R = 17`, `MEMBRANE_R = 44`, `NOZZLE_OUT = 64`, `RADIATOR_OUT = 72`, `DOCK_R = 34`
   - `DETAIL_MIN_R = 40`
-  - `SEGMENT_START = Math.PI / 4`
+  - `SEGMENT_START = Math.PI / 4 - GAP_ARC / 2` (≈ 0.5454 rad — half a gap before the diagonal,
+    so gap **centres** land on 45/135/225/315 and dash centres land on the cardinals)
   - `segmentDash(r: number): number[]` — 8-entry dash pattern that tiles **exactly once** around the circumference, gaps landing on the diagonals
   - `detailFor(r: number): 'full' | 'lite'`
 
-**Critical correctness note:** the pattern must start at a **gap centre**, not at angle 0. Starting mid-dash means the period does not divide the circumference and the arcs never close. Starting the arc at `Math.PI/4` and alternating `[gap, dash, gap, dash, …]` makes the total exactly `2πr`.
+**Critical correctness note:** the pattern must start at a **gap centre**, not at angle 0. Starting mid-dash means the period does not divide the circumference and the arcs never close. Because the pattern is gap-first, the arc start must sit **half a gap before** the target diagonal: `SEGMENT_START = Math.PI/4 - GAP_ARC/2`. That centres the gaps on 45/135/225/315, which in turn puts the dash centres on the cardinals — where Task 2 places the engine nozzles and radiator fins, while the Task 2 spokes on the diagonals correctly bridge the gaps.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 // tests/mothership-geometry.test.ts
 import { describe, it, expect } from 'vitest';
-import { segmentDash, SEGMENT_START, detailFor, DETAIL_MIN_R, HULL_OUTER } from '../src/game/mothership.js';
+import { segmentDash, SEGMENT_START, detailFor, DETAIL_MIN_R, HULL_R, HULL_INNER, HULL_OUTER } from '../src/game/mothership.js';
 
 describe('ring geometry', () => {
   it('dash pattern tiles exactly once around the circumference', () => {
@@ -69,11 +70,14 @@ describe('ring geometry', () => {
     const d = segmentDash(50);
     const dashes = d.filter((_, i) => i % 2 === 1);
     expect(dashes).toHaveLength(4);
-    for (const x of dashes) expect(x).toBeCloseTo(54.5398, 3);
+    expect(dashes).toEqual([54.5398, 54.5398, 54.5398, 54.5398].map(v => expect.closeTo(v, 3)));
   });
 
-  it('starts at 45 degrees so gaps sit on the diagonals', () => {
-    expect(SEGMENT_START).toBeCloseTo(Math.PI / 4, 9);
+  it('starts half a gap before the diagonal so gap centres land on 45/135/225/315', () => {
+    // GAP_ARC is 0.48 rad, so half of it is 0.24. Starting at PI/4 would put a gap's
+    // LEADING EDGE on the diagonal and centre it 13.75 degrees past - spokes would then
+    // clip into the solid band instead of bridging a gap.
+    expect(SEGMENT_START).toBeCloseTo(Math.PI / 4 - 0.24, 9);
   });
 
   it('drops to lite detail below the radius threshold', () => {
@@ -83,8 +87,8 @@ describe('ring geometry', () => {
   });
 
   it('derives inner and outer hull radii from the band width', () => {
-    expect(HULL_OUTER - 50).toBe(8);
-    expect(50 - 42).toBe(8);
+    expect(HULL_OUTER - HULL_R).toBe(8);
+    expect(HULL_R - HULL_INNER).toBe(8);
   });
 });
 ```
