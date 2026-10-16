@@ -8,9 +8,11 @@ export const NOZZLE_OUT = 64;
 export const RADIATOR_OUT = 72;
 export const DOCK_R = 34;
 export const DETAIL_MIN_R = 40;
-export const SEGMENT_START = Math.PI / 4;
+
 const N_SEGMENTS = 4;
-const GAP_ARC = 0.48;  // radians-worth of arc per gap, as a multiple of r
+const GAP_ARC = 0.48;  // angular gap per segment, radians (arc length per unit radius)
+
+export const SEGMENT_START = Math.PI / 4 - GAP_ARC / 2;
 
 export function segmentDash(r: number): number[] {
   const gap = GAP_ARC * r;
