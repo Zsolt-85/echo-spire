@@ -149,9 +149,13 @@ Every later task needs to draw into something without a real canvas.
 
 **Interfaces:**
 - Consumes: nothing
-- Produces: `makeCtx(): { ctx: CanvasRenderingContext2D & { calls: Call[] }; calls: Call[] }`
+- Produces: `makeCtx(): { ctx: CanvasRenderingContext2D & { calls: Call[] }; calls: Call[] }`, `installCanvasGlobals(): void`
 
 This file is **not** a test file (no `.test.ts` suffix), so Vitest will not collect it.
+
+`installCanvasGlobals()` exists because `src/game/ships.ts` runs `new Path2D(...)` at **module
+scope**, and `Path2D` is `undefined` in Node. Any test importing `render.ts` throws at import time
+unless it is stubbed.
 
 - [ ] **Step 1: Create the stub**
 
@@ -209,12 +213,27 @@ export function makeCtx() {
   }
   return { ctx: ctx as CanvasRenderingContext2D & { calls: Call[] }, calls };
 }
+
+/**
+ * `src/game/ships.ts` builds `SHIP_PATHS` with `new Path2D(...)` at module scope.
+ * Node has no Path2D, so any test importing `render.ts` throws on import without this.
+ * Call it from `beforeAll`, then load `render.ts` with a dynamic `import()`.
+ */
+export function installCanvasGlobals(): void {
+  const g = globalThis as any;
+  if (typeof g.Path2D === 'undefined') {
+    g.Path2D = class {
+      constructor(_d?: string) { /* shape is irrelevant; ships are never drawn in these tests */ }
+      addPath(): void { /* no-op */ }
+    };
+  }
+}
 ```
 
 - [ ] **Step 2: Sanity-check it compiles**
 
 Run: `npx tsc --noEmit`
-Expected: no output (clean)
+Expected: no output (clean). Add a test asserting `installCanvasGlobals()` defines `Path2D` and leaves an existing one alone.
 
 - [ ] **Step 3: Commit**
 
@@ -608,16 +627,31 @@ git commit -m "feat(mothership): full plating detail — radiators, panel ticks,
 
 ```ts
 // tests/mothership-integration.test.ts
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { makeCtx } from './helpers/canvas-stub.js';
-import { drawSpace } from '../src/game/render.js';
+import { makeCtx, installCanvasGlobals } from './helpers/canvas-stub.js';
 import { freshState } from '../src/game/state.js';
+
+// render.ts pulls in ships.ts, which runs `new Path2D()` at module scope.
+// Install the stub first, then load render.ts dynamically so module evaluation
+// happens after installCanvasGlobals() has run.
+let drawSpace: typeof import('../src/game/render.js')['drawSpace'];
+beforeAll(async () => {
+  installCanvasGlobals();
+  ({ drawSpace } = await import('../src/game/render.js'));
+});
 
 describe('gameplay renders the echo ring', () => {
   it('draws without throwing for the real arena', () => {
     const { ctx } = makeCtx();
     expect(() => drawSpace(ctx, 560, 560, 1000, freshState(), 0.016)).not.toThrow();
+  });
+
+  it('draws the ring: the arena emits far more ops than a bare clear', () => {
+    const { ctx, calls } = makeCtx();
+    drawSpace(ctx, 560, 560, 1000, freshState(), 0.016);
+    expect(calls.filter(c => c.op === 'arc').length).toBeGreaterThan(3);
+    expect(calls.length).toBeGreaterThan(50);
   });
 
   it('no longer imports drawMothership from ships.js', () => {
@@ -672,7 +706,7 @@ Remove the entire `export function drawMothership(...) { ... }` block from `src/
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/mothership-integration.test.ts`
-Expected: PASS, 3 tests
+Expected: PASS, 4 tests
 
 - [ ] **Step 6: Run the full gate**
 
