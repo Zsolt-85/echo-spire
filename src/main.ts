@@ -115,6 +115,9 @@ wire('btn-collapse',()=>{  const gained=collapseRun(s);
   }
 });
 wire('btn-launch',()=>{launch();});
+wire('btn-launch-secondary',()=>{launch();});
+wire('tab-menu-home',()=>{setMenuView('home');});
+wire('btn-back',()=>{setMenuView('home');});
 wire('btn-wipe',()=>{
   const b=document.getElementById('btn-wipe');
   if(b&&(b as HTMLElement).dataset.armed==='1'){wipeSave();if(typeof location!=='undefined')location.reload();return;}
@@ -124,11 +127,11 @@ wire('btn-wipe',()=>{
   }
 });
 wire('btn-relaunch',()=>{launch();});
-}
 wire('btn-menu-workshop',()=>{setMenuView('workshop');showMenu(best);loop.setPaused(true);});
 wire('tab-menu-workshop',()=>{setMenuView('workshop');});
 wire('tab-menu-academy',()=>{setMenuView('academy');});
 for(const t of THREADS){for(const sk of TRAIN_SKILLS){wire(`btn-train-${t}-${sk}`,()=>{startResearch(s,t,sk,Date.now(),Math.max(best,s.wave));});}}
+for(const [id, l] of Object.entries(RESEARCH_LINES) as [LineId, unknown][]){wire(`btn-lab-${id}`,()=>{if(startResearch(s,'t0',id,Date.now(),Math.max(best,s.wave)))persist();});}
 for(const t of THREADS){
   wire(`btn-switch-${t}`,()=>{const pick=document.getElementById(`lab-pick-${t}`) as HTMLSelectElement|null;const line=((pick?.value ?? 'gunnery') as LineId);switchResearch(s,t,line,Date.now(),Math.max(best,s.wave));});
   wire(`btn-auto-${t}`,()=>{setAuto(s,t,!autoOn(s,t));});
