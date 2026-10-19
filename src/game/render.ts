@@ -1,4 +1,5 @@
-import {drawMothership,SHIP_PATHS} from './ships.js';
+import {SHIP_PATHS} from './ships.js';
+import {drawMothership, defaultMotion} from './mothership.js';
 import {RIFT_POS} from './rifts.js';
 import type {GameState} from './state.js';
 const KIND_STYLE:Record<string,string>={dart:'#7dd3fc',bomber:'#f0abfc',hex:'#a78bfa'};
@@ -29,7 +30,7 @@ export function drawSpace(ctx:CanvasRenderingContext2D,w:number,h:number,t:numbe
   }
   ctx.globalAlpha=1;
   const hpFrac=s?Math.max(0,Math.min(1,s.hull/s.maxHull)):1;
-  drawMothership(ctx,w/2,h/2,hpFrac,t);
+  drawMothership(ctx,w/2,h/2,{r:54,hpFrac,t,motion:defaultMotion('run')});
   // Enemy spacecrafts + golden Cache Ship, drawn from the shared SHIP_PATHS lib.
   if(s)for(const sh of s.ships){
     const path=SHIP_PATHS[sh.kind];if(!path)continue;
