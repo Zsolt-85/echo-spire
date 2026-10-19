@@ -9,6 +9,11 @@ function reducedMotion():boolean{
   try{if(typeof matchMedia!=='undefined')return matchMedia('(prefers-reduced-motion: reduce)').matches;}catch{/* ssr */}
   return false;
 }
+export function impactFeedback(s:GameState|null|undefined,cx:number,cy:number):{hitFlash:number;hitAngle:number}{
+  const e=s?.fx?.find(e=>e.kind==='flash');
+  if(!e)return {hitFlash:0,hitAngle:0};
+  return {hitFlash:Math.max(0,Math.min(1,e.ttl/0.15)),hitAngle:Math.atan2(e.y-cy,e.x-cx)};
+}
 export function drawSpace(ctx:CanvasRenderingContext2D,w:number,h:number,t:number,s?:GameState|null,dt?:number){
   const frameDt=typeof dt==='number'&&dt>0?dt:1/60;
   const rm=reducedMotion();
@@ -30,7 +35,7 @@ export function drawSpace(ctx:CanvasRenderingContext2D,w:number,h:number,t:numbe
   }
   ctx.globalAlpha=1;
   const hpFrac=s?Math.max(0,Math.min(1,s.hull/s.maxHull)):1;
-  drawMothership(ctx,w/2,h/2,{r:54,hpFrac,t,motion:defaultMotion('run')});
+  drawMothership(ctx,w/2,h/2,{r:54,hpFrac,t,motion:defaultMotion('run'),...impactFeedback(s,w/2,h/2)});
   // Enemy spacecrafts + golden Cache Ship, drawn from the shared SHIP_PATHS lib.
   if(s)for(const sh of s.ships){
     const path=SHIP_PATHS[sh.kind];if(!path)continue;

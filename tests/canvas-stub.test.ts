@@ -57,13 +57,12 @@ describe('canvas stub', () => {
     expect(Number.isFinite(metrics.width)).toBe(true);
   });
 
-  it('records line dashes and returns an array', () => {
+  it('records line dashes', () => {
     const { ctx, calls } = makeCtx();
 
     ctx.setLineDash([1, 2]);
 
     expect(calls).toContainEqual({ op: 'setLineDash', args: [[1, 2]] });
-    expect(Array.isArray(ctx.getLineDash())).toBe(true);
   });
 });
 

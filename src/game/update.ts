@@ -91,7 +91,7 @@ export function tickSim(s:GameState,dt:number){
       const sh0=s.shield??0;
       if(sh0>0){const abs=Math.min(sh0,rem);s.shield=sh0-abs;rem-=abs;}
       if(rem>0&&(s.timeS??0)>=(s.aegisUntil??0))s.hull-=rem;
-      if(!s.fx!.some(e=>e.kind==='flash'))pushFx({kind:'flash',x:280,y:280,tx:280,ty:280,ttl:0.15});
+      if(!s.fx!.some(e=>e.kind==='flash'))pushFx({kind:'flash',x:sh.x,y:sh.y,tx:sh.x,ty:sh.y,ttl:0.15});
       const th=s.thorns??0;
       let thornKill=false;
       if(th>0&&contact>0){sh.hp-=th*contact;

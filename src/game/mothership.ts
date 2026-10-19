@@ -78,6 +78,11 @@ function spoke(ctx: CanvasRenderingContext2D, a: number, r0: number, r1: number)
   ctx.beginPath(); ctx.moveTo(c * r0, s * r0); ctx.lineTo(c * r1, s * r1); ctx.stroke();
 }
 
+export function rimColor(hpFrac: number): string {
+  const hp = Math.max(0, Math.min(1, hpFrac));
+  return hp >= 0.5 ? '#5eead4' : hp >= 0.25 ? '#fbbf24' : '#f43f5e';
+}
+
 export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: number, o: MothershipOpts): void {
   const hp = Math.max(0, Math.min(1, o.hpFrac));
   const detail = o.detail ?? detailFor(o.r);
@@ -86,7 +91,8 @@ export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: numb
 
   const ringAngle = o.motion === 'co' ? (o.t / 52000) * TAU
                   : o.motion === 'counter' ? (o.t / 44000) * TAU : 0;
-  const hubAngle = o.motion === 'counter' ? -(o.t / 26000) * TAU : 0;
+  const hubAngle = o.motion === 'counter' ? -(o.t / 26000) * TAU
+                 : o.motion === 'co' ? ringAngle : 0;
 
   ctx.save();
   ctx.setLineDash([]);
@@ -94,17 +100,22 @@ export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: numb
   ctx.scale(o.r / HULL_OUTER, o.r / HULL_OUTER);
 
   // 1 — membrane
-  const memAlpha = (0.18 + 0.22 * hp) * (1 + flash * 0.8);
+  const flicker = hp < 0.25 && o.motion !== 'locked' ? 0.12 * (0.5 + 0.5 * Math.sin(o.t / 90)) : 0;
+  const memAlpha = (0.18 + 0.22 * hp + flicker) * (1 + flash * 0.8);
   ctx.globalAlpha = memAlpha;
   ctx.fillStyle = '#5eead4';
   ctx.beginPath(); ctx.arc(0, 0, MEMBRANE_R, 0, TAU); ctx.fill();
+  ctx.globalAlpha = Math.min(1, memAlpha + 0.2);
+  ctx.strokeStyle = '#5eead4'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(0, 0, HULL_INNER - 2, 0, TAU);
+  ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
   ctx.globalAlpha = 1;
 
   // 2 — hull band
   ctx.save(); ctx.rotate(ringAngle);
   ctx.strokeStyle = '#243b5c'; ctx.fillStyle = '#243b5c';
   band(ctx, HULL_R, BAND_W);
-  ctx.strokeStyle = hp >= 0.5 ? '#5eead4' : hp > 0.25 ? '#fbbf24' : '#f43f5e';
+  ctx.strokeStyle = rimColor(hp);
   band(ctx, HULL_R, BAND_W - 9);
   ctx.restore();
 
@@ -146,7 +157,7 @@ export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: numb
     ctx.restore();
 
     // truss spokes — hub to ring on the diagonals
-    ctx.save();
+    ctx.save(); ctx.rotate(ringAngle);
     ctx.strokeStyle = '#3a638f'; ctx.lineWidth = 7;
     for (const a of DIAGONALS) spoke(ctx, a, CORE_R - 3, HULL_INNER);
     ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 2.6; ctx.globalAlpha = 0.8;
@@ -201,6 +212,9 @@ export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: numb
     if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
   }
   ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.globalAlpha = 0.5 + 0.5 * hp;
+  ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.arc(0, 0, CORE_R * 0.55, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
   ctx.globalAlpha = 1;
   ctx.fillStyle = '#5eead4';
   ctx.beginPath(); ctx.arc(0, 0, 4 * breath, 0, TAU); ctx.fill();

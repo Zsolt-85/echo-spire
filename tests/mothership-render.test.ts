@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { makeCtx } from './helpers/canvas-stub.js';
-import { drawMothership, defaultMotion, HULL_OUTER, HULL_R, segmentDash, type RingMotion } from '../src/game/mothership.js';
+import { drawMothership, defaultMotion, HULL_OUTER, HULL_R, rimColor, segmentDash, type RingMotion } from '../src/game/mothership.js';
 
 const MOTIONS: RingMotion[] = ['counter', 'co', 'locked'];
 
@@ -75,6 +75,43 @@ describe('drawMothership — lite tier', () => {
     } finally {
       if (real === undefined) delete g.matchMedia; else g.matchMedia = real;
     }
+  });
+
+  it('co-rotates the whole ring in runs: hub and spokes turn with the band', () => {
+    const eighth = Math.PI / 8;
+    const eighthTurns = (calls: { op: string; args: unknown[] }[]) =>
+      calls.filter(c => c.op === 'rotate' && Math.abs((c.args[0] as number) - eighth) < 1e-9).length;
+    const lite = makeCtx();
+    const full = makeCtx();
+    drawMothership(lite.ctx, 100, 100, { r: 54, hpFrac: 1, t: 3250, motion: 'co', detail: 'lite' });
+    drawMothership(full.ctx, 100, 100, { r: 54, hpFrac: 1, t: 3250, motion: 'co', detail: 'full' });
+    expect(eighthTurns(lite.calls)).toBe(3); // band, nozzles, hub
+    expect(eighthTurns(full.calls) - eighthTurns(lite.calls)).toBe(6); // radiators, ticks, vents, bevels, spokes, collars
+  });
+
+  it('uses amber at exactly 25% hull and red only below it', () => {
+    expect(rimColor(0.5)).toBe('#5eead4');
+    expect(rimColor(0.4999)).toBe('#fbbf24');
+    expect(rimColor(0.25)).toBe('#fbbf24');
+    expect(rimColor(0.2499)).toBe('#f43f5e');
+    expect(rimColor(0)).toBe('#f43f5e');
+  });
+
+  it('flickers the membrane below 25% hull, but not under reduced motion', () => {
+    const membraneAlpha = (hpFrac: number, t: number, motion: RingMotion) => {
+      const alphas: number[] = [];
+      const base = makeCtx().ctx;
+      const ctx = new Proxy(base, {
+        get(target, prop, receiver) {
+          if (prop === 'fill') return () => { alphas.push(target.globalAlpha); };
+          return Reflect.get(target, prop, receiver);
+        }
+      });
+      drawMothership(ctx, 100, 100, { r: 54, hpFrac, t, motion, detail: 'lite' });
+      return alphas[0];
+    };
+    expect(membraneAlpha(0.1, 0, 'co')).not.toBeCloseTo(membraneAlpha(0.1, 300, 'co'), 6);
+    expect(membraneAlpha(0.1, 0, 'locked')).toBeCloseTo(membraneAlpha(0.1, 300, 'locked'), 6);
   });
 });
 
