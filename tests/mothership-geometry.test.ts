@@ -34,7 +34,7 @@ describe('ring geometry', () => {
   it('drops to lite detail below the radius threshold', () => {
     expect(detailFor(DETAIL_MIN_R)).toBe('full');
     expect(detailFor(DETAIL_MIN_R - 1)).toBe('lite');
-    expect(detailFor(54)).toBe('full');
+    expect(detailFor(54)).toBe('lite');
   });
 
   it('derives inner and outer hull radii from the band width', () => {

@@ -7,7 +7,7 @@ export const MEMBRANE_R = 44;
 export const NOZZLE_OUT = 64;
 export const RADIATOR_OUT = 72;
 export const DOCK_R = 34;
-export const DETAIL_MIN_R = 40;
+export const DETAIL_MIN_R = 96;
 
 const N_SEGMENTS = 4;
 const GAP_ARC = 0.48;  // angular gap per segment, radians (arc length per unit radius)
@@ -126,7 +126,7 @@ export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: numb
     ctx.save(); ctx.rotate(ringAngle);
     ctx.globalAlpha = 0.85; ctx.strokeStyle = '#12233b'; ctx.lineWidth = 2.6;
     ctx.beginPath(); ctx.arc(0, 0, HULL_R + 3, 0, TAU);
-    const ventPeriod = (TAU * HULL_R) / 8;
+    const ventPeriod = (TAU * (HULL_R + 3)) / 8;
     ctx.setLineDash([4, ventPeriod - 4]);
     ctx.stroke(); ctx.setLineDash([]);
     ctx.restore();

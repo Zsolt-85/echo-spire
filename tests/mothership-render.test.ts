@@ -30,8 +30,8 @@ describe('drawMothership — lite tier', () => {
   it('scales with radius: doubling r doubles the recorded scale, and op count is radius-independent', () => {
     const a = makeCtx();
     const b = makeCtx();
-    drawMothership(a.ctx, 100, 100, { r: 54, hpFrac: 1, t: 0, motion: 'locked' });
-    drawMothership(b.ctx, 100, 100, { r: 108, hpFrac: 1, t: 0, motion: 'locked' });
+    drawMothership(a.ctx, 100, 100, { r: 54, hpFrac: 1, t: 0, motion: 'locked', detail: 'lite' });
+    drawMothership(b.ctx, 100, 100, { r: 108, hpFrac: 1, t: 0, motion: 'locked', detail: 'lite' });
     const scaleArg = (calls: { op: string; args: unknown[] }[]) =>
       calls.find(c => c.op === 'scale')!.args[0] as number;
     const s1 = scaleArg(a.calls);
@@ -87,12 +87,14 @@ describe('drawMothership — full detail', () => {
   });
 
   it('adds panel ticks, spokes, radiators and docking collars', () => {
-    const { ctx, calls } = makeCtx();
-    drawMothership(ctx, 100, 100, { r: 200, hpFrac: 1, t: 0, motion: 'locked', detail: 'full' });
-    const ops = calls.map(c => c.op);
-    expect(ops.filter(o => o === 'setLineDash').length).toBeGreaterThanOrEqual(4);
-    expect(ops.filter(o => o === 'fillRect').length).toBeGreaterThanOrEqual(4);
-    expect(ops.filter(o => o === 'lineTo').length).toBeGreaterThanOrEqual(8);
+    const lite = makeCtx();
+    const full = makeCtx();
+    drawMothership(lite.ctx, 100, 100, { r: 200, hpFrac: 1, t: 0, motion: 'locked', detail: 'lite' });
+    drawMothership(full.ctx, 100, 100, { r: 200, hpFrac: 1, t: 0, motion: 'locked', detail: 'full' });
+    const count = (calls: { op: string }[], op: string) => calls.filter(c => c.op === op).length;
+    expect(count(full.calls, 'setLineDash') - count(lite.calls, 'setLineDash')).toBeGreaterThanOrEqual(4);
+    expect(count(full.calls, 'fillRect') - count(lite.calls, 'fillRect')).toBeGreaterThanOrEqual(4);
+    expect(count(full.calls, 'lineTo') - count(lite.calls, 'lineTo')).toBeGreaterThanOrEqual(8);
   });
 
   it('is identical in call count across every hull value (detail is hull-independent)', () => {
