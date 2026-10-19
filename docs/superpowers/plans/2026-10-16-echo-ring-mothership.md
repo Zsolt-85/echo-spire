@@ -760,6 +760,7 @@ git commit -m "feat(mothership): render the echo ring in-game, drop the saucer r
 - Modify: `scripts/gen_index.py` (insert canvas at line 64, before `<div class="menu-sheet">`)
 - Modify: `index.html` (regenerated)
 - Modify: `src/main.ts` (lines 8–9 for the canvas handles; line 63 for the draw call)
+- Modify: `src/ui/menu.ts` (hide the gameplay chrome while the menu is open)
 - Modify: `src/style.css` (line 20 `#menu-overlay` rule; new `#menu-ship` rule)
 - Test: `tests/menu-ship.test.ts`
 
@@ -808,8 +809,34 @@ describe('menu hero canvas', () => {
     const rule = css.slice(start, css.indexOf('}', start) + 1);
     expect(rule).not.toMatch(/rgba\(2,4,8,\.92\)/);
     expect(rule).toMatch(/radial-gradient/);
+    expect(rule).toMatch(/backdrop-filter:none/);
     expect(css).toMatch(/#menu-ship\{[^}]*position:absolute/);
     expect(css).toMatch(/#menu-ship\{[^}]*pointer-events:none/);
+  });
+
+  it('the hero canvas is a full-bleed backdrop, not a bordered element', () => {
+    const css = readFileSync('src/style.css', 'utf8');
+    const start = css.indexOf('#menu-ship{');
+    expect(start).toBeGreaterThan(-1);
+    const rule = css.slice(start, css.indexOf('}', start) + 1);
+    expect(rule).toMatch(/border:none/);
+    expect(rule).toMatch(/border-radius:0/);
+    expect(rule).toMatch(/box-sizing:border-box/);
+  });
+
+  it('hides the canvas from assistive tech', () => {
+    const html = readFileSync('index.html', 'utf8');
+    const start = html.indexOf('<canvas id="menu-ship"');
+    expect(start).toBeGreaterThan(-1);
+    const tag = html.slice(start, html.indexOf('>', start) + 1);
+    expect(tag).toContain('aria-hidden="true"');
+  });
+
+  it('hides the gameplay chrome while the menu is open', () => {
+    const src = readFileSync('src/ui/menu.ts', 'utf8');
+    expect(src).toMatch(/visibility = phase === 'menu' \? 'hidden' : 'visible'/);
+    expect(src).toContain("el('topbar')");
+    expect(src).toContain("el('layout')");
   });
 
   it('keeps the sheet above the hero canvas', () => {
@@ -929,13 +956,31 @@ And extend the **existing** `.menu-sheet` rule on line 21 (do not add a duplicat
 Add the new canvas rule immediately after the `#menu-overlay` rule:
 
 ```
-#menu-ship{position:absolute;inset:0;width:100%;height:100%;opacity:.5;pointer-events:none;z-index:0;}
+#menu-ship{position:absolute;inset:0;width:100%;height:100%;opacity:.5;pointer-events:none;z-index:0;border:none;border-radius:0;box-sizing:border-box;}
 ```
+
+The `border`/`border-radius` resets are mandatory: the global rule `canvas{border:1px solid #1e3a5f;border-radius:8px;position:sticky;top:12px;}` also matches `#menu-ship`. The ID selector wins for `position`, but the border and radius still apply — a visible rounded frame around a full-bleed backdrop, plus a 2px content-box overflow that can raise a horizontal scrollbar on the scrolling overlay. `box-sizing:border-box` is the belt to that braces.
+
+Then hide the gameplay chrome while the menu is open. In `src/ui/menu.ts`, replace the line
+
+```ts
+  if (g) g.style.visibility = 'visible';
+```
+
+with
+
+```ts
+  if (g) g.style.visibility = phase === 'menu' ? 'hidden' : 'visible';
+  const tb = el('topbar');
+  if (tb) tb.style.visibility = phase === 'menu' ? 'hidden' : 'visible';
+```
+
+Required because the overlay's centre is only 5% opaque: without this, the live arena, the HUD pills in `#topbar`, and the side panel all show through behind the menu hero. `#topbar` and `#layout` are siblings of `#menu-overlay`, not descendants, so hiding them cannot hide the menu itself. Do not use the `hidden` attribute — `#topbar{display:flex}` and `#layout{display:flex}` override the UA `[hidden]{display:none}` rule, so it would do nothing.
 
 - [ ] **Step 8: Run test to verify it passes**
 
 Run: `npx vitest run tests/menu-ship.test.ts`
-Expected: PASS, 8 tests
+Expected: PASS, 11 tests
 
 - [ ] **Step 9: Run the full gate**
 
@@ -945,7 +990,7 @@ Expected: all pass, clean build
 - [ ] **Step 10: Commit**
 
 ```bash
-git add scripts/gen_index.py index.html src/main.ts src/style.css src/game/mothership.ts tests/menu-ship.test.ts
+git add scripts/gen_index.py index.html src/main.ts src/ui/menu.ts src/style.css src/game/mothership.ts tests/menu-ship.test.ts
 git commit -m "feat(mothership): show the echo ring behind the main menu"
 ```
 
