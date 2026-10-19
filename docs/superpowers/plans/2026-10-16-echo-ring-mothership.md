@@ -257,7 +257,7 @@ The tier that must stay legible at 108px: membrane, hull band, lit windows, engi
 - Test: `tests/mothership-render.test.ts`
 
 **Interfaces:**
-- Consumes: Task 1 (`segmentDash`, `SEGMENT_START`, `HULL_R`, `HULL_OUTER`, `HULL_INNER`, `CORE_R`, `MEMBRANE_R`, `NOZZLE_OUT`, `detailFor`), Task 2 (`makeCtx`)
+- Consumes: Task 1 (`segmentDash`, `SEGMENT_START`, `HULL_R`, `BAND_W`, `HULL_OUTER`, `HULL_INNER`, `CORE_R`, `MEMBRANE_R`, `NOZZLE_OUT`), Task 2 (`makeCtx`)
 - Produces:
   - `type RingMotion = 'counter' | 'co' | 'locked'`
   - `interface MothershipOpts { r: number; hpFrac: number; t: number; motion: RingMotion; detail?: Detail; hitFlash?: number; hitAngle?: number }`
@@ -270,7 +270,7 @@ The tier that must stay legible at 108px: membrane, hull band, lit windows, engi
 // tests/mothership-render.test.ts
 import { describe, it, expect } from 'vitest';
 import { makeCtx } from './helpers/canvas-stub.js';
-import { drawMothership, defaultMotion, type RingMotion } from '../src/game/mothership.js';
+import { drawMothership, defaultMotion, HULL_OUTER, type RingMotion } from '../src/game/mothership.js';
 
 const MOTIONS: RingMotion[] = ['counter', 'co', 'locked'];
 
@@ -295,12 +295,18 @@ describe('drawMothership — lite tier', () => {
     expect(calls.some(c => c.op === 'stroke')).toBe(true);
   });
 
-  it('scales with radius and honours an explicit detail override', () => {
-    const lite = makeCtx();
-    const full = makeCtx();
-    drawMothership(lite.ctx, 100, 100, { r: 54, hpFrac: 1, t: 0, motion: 'locked', detail: 'lite' });
-    drawMothership(full.ctx, 100, 100, { r: 54, hpFrac: 1, t: 0, motion: 'locked', detail: 'full' });
-    expect(lite.calls.length).toBeLessThan(full.calls.length);
+  it('scales with radius: doubling r doubles the recorded scale, and op count is radius-independent', () => {
+    const a = makeCtx();
+    const b = makeCtx();
+    drawMothership(a.ctx, 100, 100, { r: 54, hpFrac: 1, t: 0, motion: 'locked' });
+    drawMothership(b.ctx, 100, 100, { r: 108, hpFrac: 1, t: 0, motion: 'locked' });
+    const scaleArg = (calls: { op: string; args: unknown[] }[]) =>
+      calls.find(c => c.op === 'scale')!.args[0] as number;
+    const s1 = scaleArg(a.calls);
+    const s2 = scaleArg(b.calls);
+    expect(s1).toBeCloseTo(54 / HULL_OUTER, 9);
+    expect(s2 / s1).toBeCloseTo(2, 9);
+    expect(a.calls.length).toBe(b.calls.length);
   });
 
   it('applies the exact-tiling segment dash to the hull band', () => {
@@ -355,7 +361,6 @@ export interface MothershipOpts {
 
 const TAU = Math.PI * 2;
 const CARDINALS = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
-const DIAGONALS = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
 
 export function defaultMotion(surface: 'menu' | 'run'): RingMotion {
   const mm = (globalThis as any).matchMedia;
@@ -374,11 +379,6 @@ function band(ctx: CanvasRenderingContext2D, r: number, width: number): void {
   ctx.setLineDash([]);
 }
 
-function spoke(ctx: CanvasRenderingContext2D, a: number, r0: number, r1: number): void {
-  const c = Math.cos(a), s = Math.sin(a);
-  ctx.beginPath(); ctx.moveTo(c * r0, s * r0); ctx.lineTo(c * r1, s * r1); ctx.stroke();
-}
-
 function nozzle(ctx: CanvasRenderingContext2D, a: number): void {
   const c = Math.cos(a), s = Math.sin(a);
   const px = -s, py = c;              // perpendicular, for the flare width
@@ -394,7 +394,6 @@ function nozzle(ctx: CanvasRenderingContext2D, a: number): void {
 
 export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: number, o: MothershipOpts): void {
   const hp = Math.max(0, Math.min(1, o.hpFrac));
-  const detail = o.detail ?? detailFor(o.r);
   const flash = Math.max(0, Math.min(1, o.hitFlash ?? 0));
   const breath = 1 + Math.sin(o.t / 620) * 0.05;
 
@@ -495,8 +494,10 @@ The plating hardware. Skipped entirely when `detail === 'lite'`.
 - Test: `tests/mothership-render.test.ts`
 
 **Interfaces:**
-- Consumes: Task 3 (`MothershipOpts`, `drawMothership`, `ringAngle`, `hubAngle`, and the module-local `spoke()` helper and `DIAGONALS` / `CARDINALS` constants already present in `src/game/mothership.ts`)
-- Produces: no new exports — adds draw calls inside the existing `detail === 'full'` branch
+- Consumes: Task 1 (`detailFor`, `BAND_W`, `HULL_R`, `HULL_OUTER`, `HULL_INNER`, `CORE_R`, `RADIATOR_OUT`, `DOCK_R`), Task 3 (`drawMothership` and its module-local `CARDINALS` constant, `ringAngle` / `hubAngle` locals)
+- Produces: no new exports — adds the module-local `DIAGONALS` constant and `spoke()` helper, the `detail` tier resolution local, and the `detail === 'full'` branch inside `drawMothership`
+
+Note: Task 3 deliberately does NOT declare `DIAGONALS`, `spoke()`, or the `detail` local, because nothing in Task 3 consumes them — adding them there would be dead code that a task-scoped review correctly flags. They are introduced here, where they are first used.
 
 - [ ] **Step 1: Add failing tests**
 
@@ -538,7 +539,30 @@ Expected: FAIL — full tier currently draws the same as lite
 
 - [ ] **Step 3: Write minimal implementation**
 
-In `src/game/mothership.ts`, inside `drawMothership`, insert this block **after** the hull band and **before** the window row:
+In `src/game/mothership.ts`, make three additions.
+
+**First**, next to the existing `const CARDINALS = ...` line, add the diagonal constant:
+
+```ts
+const DIAGONALS = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
+```
+
+**Second**, add the `spoke()` helper above `drawMothership`:
+
+```ts
+function spoke(ctx: CanvasRenderingContext2D, a: number, r0: number, r1: number): void {
+  const c = Math.cos(a), s = Math.sin(a);
+  ctx.beginPath(); ctx.moveTo(c * r0, s * r0); ctx.lineTo(c * r1, s * r1); ctx.stroke();
+}
+```
+
+**Third**, inside `drawMothership`, add the tier resolution next to `const hp = ...`:
+
+```ts
+  const detail = o.detail ?? detailFor(o.r);
+```
+
+Then insert this block **after** the hull band and **before** the window row:
 
 ```ts
   if (detail === 'full') {
