@@ -685,7 +685,7 @@ describe('gameplay renders the echo ring', () => {
 
   it('no longer imports drawMothership from ships.js', () => {
     const src = readFileSync('src/game/render.ts', 'utf8');
-    expect(src).not.toMatch(/from '\.\/ships\.js'[^;]*drawMothership/);
+    expect(src).not.toMatch(/drawMothership[^;\n]*ships\.js/);
     expect(src).toMatch(/from '\.\/mothership\.js'/);
   });
 
