@@ -803,9 +803,22 @@ describe('menu hero canvas', () => {
 
   it('the overlay is no longer near-opaque', () => {
     const css = readFileSync('src/style.css', 'utf8');
-    const rule = css.split('#menu-overlay')[1] ?? '';
+    const start = css.indexOf('#menu-overlay{');
+    expect(start).toBeGreaterThan(-1);
+    const rule = css.slice(start, css.indexOf('}', start) + 1);
     expect(rule).not.toMatch(/rgba\(2,4,8,\.92\)/);
-    expect(rule).toMatch(/menu-ship/);
+    expect(rule).toMatch(/radial-gradient/);
+    expect(css).toMatch(/#menu-ship\{[^}]*position:absolute/);
+    expect(css).toMatch(/#menu-ship\{[^}]*pointer-events:none/);
+  });
+
+  it('keeps the sheet above the hero canvas', () => {
+    const css = readFileSync('src/style.css', 'utf8');
+    const start = css.indexOf('.menu-sheet{');
+    expect(start).toBeGreaterThan(-1);
+    const rule = css.slice(start, css.indexOf('}', start) + 1);
+    expect(rule).toMatch(/position:relative/);
+    expect(rule).toMatch(/z-index:1/);
   });
 
   it('ring radius always exceeds half the largest viewport dimension', () => {
@@ -817,6 +830,11 @@ describe('menu hero canvas', () => {
 
   it('clamps to a sensible minimum on tiny viewports', () => {
     expect(menuRingRadius(200, 150)).toBe(320);
+  });
+
+  it('spans 58% of the larger viewport dimension', () => {
+    expect(menuRingRadius(2000, 1000)).toBeCloseTo(1160, 6);
+    expect(menuRingRadius(1000, 2000)).toBeCloseTo(1160, 6);
   });
 });
 ```
@@ -832,10 +850,16 @@ Append to `src/game/mothership.ts`:
 
 ```ts
 export const MENU_MIN_R = 320;
+export const MENU_RING_SPAN = 0.58;
 export function menuRingRadius(vw: number, vh: number): number {
-  return Math.max(MENU_MIN_R, (Math.max(vw, vh) * 0.5) / HULL_OUTER);
+  return Math.max(MENU_MIN_R, Math.max(vw, vh) * MENU_RING_SPAN);
 }
 ```
+
+The span is a fraction of the viewport's **larger** dimension, so `2r > max(vw,vh)` holds on every
+aspect ratio and the ring is cropped by the edges. Do NOT divide by `HULL_OUTER` here: `r` is
+already the hull-outer pixel radius that `drawMothership` scales by, so dividing yields ~16px at
+1920 wide and the minimum clamp would always win.
 
 - [ ] **Step 4: Emit the canvas from the generator**
 
@@ -896,17 +920,22 @@ to:
 background:radial-gradient(ellipse at 50% 50%,rgba(2,4,8,.05) 0%,rgba(2,4,8,.5) 70%,rgba(2,4,8,.78) 100%);backdrop-filter:none;-webkit-backdrop-filter:none;
 ```
 
-And add immediately after that rule:
+And extend the **existing** `.menu-sheet` rule on line 21 (do not add a duplicate selector):
+
+```
+.menu-sheet{max-width:820px;width:100%;margin:28px 16px 48px;position:relative;z-index:1;}
+```
+
+Add the new canvas rule immediately after the `#menu-overlay` rule:
 
 ```
 #menu-ship{position:absolute;inset:0;width:100%;height:100%;opacity:.5;pointer-events:none;z-index:0;}
-.menu-sheet{position:relative;z-index:1;}
 ```
 
 - [ ] **Step 8: Run test to verify it passes**
 
 Run: `npx vitest run tests/menu-ship.test.ts`
-Expected: PASS, 6 tests
+Expected: PASS, 8 tests
 
 - [ ] **Step 9: Run the full gate**
 
