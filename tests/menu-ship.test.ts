@@ -10,6 +10,14 @@ describe('menu hero canvas', () => {
     expect(html).toContain('id="menu-ship"');
   });
 
+  it('marks the hero canvas aria-hidden', () => {
+    const html = readFileSync('index.html', 'utf8');
+    const start = html.indexOf('<canvas id="menu-ship"');
+    expect(start).toBeGreaterThan(-1);
+    const tag = html.slice(start, html.indexOf('>', start) + 1);
+    expect(tag).toContain('aria-hidden="true"');
+  });
+
   it('sits inside the menu overlay, before the sheet, so the sheet paints over it', () => {
     const html = readFileSync('index.html', 'utf8');
     const overlay = html.indexOf('id="menu-overlay"');
@@ -33,6 +41,7 @@ describe('menu hero canvas', () => {
     const rule = css.slice(start, css.indexOf('}', start) + 1);
     expect(rule).not.toMatch(/rgba\(2,4,8,\.92\)/);
     expect(rule).toMatch(/radial-gradient/);
+    expect(rule).toMatch(/backdrop-filter:none/);
     expect(css).toMatch(/#menu-ship\{[^}]*position:absolute/);
     expect(css).toMatch(/#menu-ship\{[^}]*pointer-events:none/);
   });
@@ -44,6 +53,23 @@ describe('menu hero canvas', () => {
     const rule = css.slice(start, css.indexOf('}', start) + 1);
     expect(rule).toMatch(/position:relative/);
     expect(rule).toMatch(/z-index:1/);
+  });
+
+  it('resets the global canvas frame on the hero', () => {
+    const css = readFileSync('src/style.css', 'utf8');
+    const start = css.indexOf('#menu-ship{');
+    expect(start).toBeGreaterThan(-1);
+    const rule = css.slice(start, css.indexOf('}', start) + 1);
+    expect(rule).toMatch(/border:none/);
+    expect(rule).toMatch(/border-radius:0/);
+    expect(rule).toMatch(/box-sizing:border-box/);
+  });
+
+  it('hides gameplay chrome behind the menu', () => {
+    const src = readFileSync('src/ui/menu.ts', 'utf8');
+    expect(src).toMatch(/visibility = phase === 'menu' \? 'hidden' : 'visible'/);
+    expect(src).toContain("el('topbar')");
+    expect(src).toContain("el('layout')");
   });
 
   it('ring radius always exceeds half the largest viewport dimension', () => {

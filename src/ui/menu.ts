@@ -10,7 +10,9 @@ function render(): void {
   show('menu-overlay', phase === 'menu');
   show('over-overlay', phase === 'over');
   const g = el('layout');
-  if (g) g.style.visibility = 'visible';
+  if (g) g.style.visibility = phase === 'menu' ? 'hidden' : 'visible';
+  const tb = el('topbar');
+  if (tb) tb.style.visibility = phase === 'menu' ? 'hidden' : 'visible';
   show('menu-view-home', _menuView === 'home');
   show('menu-view-workshop', _menuView === 'workshop');
   show('menu-view-academy', _menuView === 'academy');
