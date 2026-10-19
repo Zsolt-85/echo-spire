@@ -16,7 +16,7 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 |---|---|
 | `npm run dev` | Dev server with hot reload |
 | `npm run build` | Static build into `dist/` |
-| `npm test` | Full suite (Vitest, 136 tests) |
+| `npm test` | Full suite (Vitest, 141 tests) |
 | `node scripts/sim.mjs` | Headless balance check — asserts first-run wall lands waves 40–60 + Academy projection |
 
 ## How a run works
@@ -28,7 +28,7 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 
 ## The ship
 
-- **Segmented ring station** — the mothership is drawn procedurally on canvas, with no image assets. Four hull segments wrap a membrane core, with lit windows, nozzles, radiators, trusses, docking collars, and bevels layered on at full detail.
+- **Segmented ring station** — the mothership is drawn procedurally on canvas, with no image assets. Four hull segments wrap a membrane core, with lit windows and nozzles at every size, plus radiators, trusses, docking collars, bevels, vents, and panel ticks at full detail.
 - **Two surfaces, one renderer** — the same `drawMothership` call paints the in-run ship and the menu hero, so the arena and menu cannot drift apart. In the menu it is a large halo cropped by the viewport behind the sheet; in the arena it sits centered on the play field.
 - **Motion** — in the menu the ring counter-rotates against the hub (44s ring / 26s hub); during runs it co-rotates as one body (52s).
 - **Detail tiering** — micro-detail is dropped automatically below `DETAIL_MIN_R` (96), so the 108px in-run ring draws the clean lite tier while the menu hero draws full detail.
