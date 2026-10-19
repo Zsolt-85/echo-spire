@@ -16,7 +16,7 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 |---|---|
 | `npm run dev` | Dev server with hot reload |
 | `npm run build` | Static build into `dist/` |
-| `npm test` | Full suite (Vitest, 141 tests) |
+| `npm test` | Full suite (Vitest, 142 tests) |
 | `node scripts/sim.mjs` | Headless balance check — asserts first-run wall lands waves 40–60 + Academy projection |
 
 ## How a run works
