@@ -77,3 +77,30 @@ describe('drawMothership — lite tier', () => {
     }
   });
 });
+
+describe('drawMothership — full detail', () => {
+  it('draws strictly more than the lite tier at the same radius', () => {
+    const lite = makeCtx(); const full = makeCtx();
+    drawMothership(lite.ctx, 100, 100, { r: 54, hpFrac: 1, t: 0, motion: 'locked', detail: 'lite' });
+    drawMothership(full.ctx, 100, 100, { r: 54, hpFrac: 1, t: 0, motion: 'locked', detail: 'full' });
+    expect(full.calls.length - lite.calls.length).toBeGreaterThan(10);
+  });
+
+  it('adds panel ticks, spokes, radiators and docking collars', () => {
+    const { ctx, calls } = makeCtx();
+    drawMothership(ctx, 100, 100, { r: 200, hpFrac: 1, t: 0, motion: 'locked', detail: 'full' });
+    const ops = calls.map(c => c.op);
+    expect(ops.filter(o => o === 'setLineDash').length).toBeGreaterThanOrEqual(4);
+    expect(ops.filter(o => o === 'fillRect').length).toBeGreaterThanOrEqual(4);
+    expect(ops.filter(o => o === 'lineTo').length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('is identical in call count across every hull value (detail is hull-independent)', () => {
+    const counts = [0, 0.5, 1].map(hp => {
+      const { ctx, calls } = makeCtx();
+      drawMothership(ctx, 100, 100, { r: 200, hpFrac: hp, t: 0, motion: 'locked', detail: 'full' });
+      return calls.length;
+    });
+    expect(new Set(counts).size).toBe(1);
+  });
+});

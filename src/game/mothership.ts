@@ -35,6 +35,7 @@ export interface MothershipOpts {
 
 const TAU = Math.PI * 2;
 const CARDINALS = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
+const DIAGONALS = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
 
 export function defaultMotion(surface: 'menu' | 'run'): RingMotion {
   const mm = (globalThis as any).matchMedia;
@@ -66,8 +67,14 @@ function nozzle(ctx: CanvasRenderingContext2D, a: number): void {
   ctx.fill(); ctx.stroke();
 }
 
+function spoke(ctx: CanvasRenderingContext2D, a: number, r0: number, r1: number): void {
+  const c = Math.cos(a), s = Math.sin(a);
+  ctx.beginPath(); ctx.moveTo(c * r0, s * r0); ctx.lineTo(c * r1, s * r1); ctx.stroke();
+}
+
 export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: number, o: MothershipOpts): void {
   const hp = Math.max(0, Math.min(1, o.hpFrac));
+  const detail = o.detail ?? detailFor(o.r);
   const flash = Math.max(0, Math.min(1, o.hitFlash ?? 0));
   const breath = 1 + Math.sin(o.t / 620) * 0.05;
 
@@ -94,6 +101,64 @@ export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: numb
   ctx.strokeStyle = hp >= 0.5 ? '#5eead4' : hp > 0.25 ? '#fbbf24' : '#f43f5e';
   band(ctx, HULL_R, BAND_W - 9);
   ctx.restore();
+
+  if (detail === 'full') {
+    // radiators — translucent fins behind the hull at the cardinals
+    ctx.save(); ctx.rotate(ringAngle);
+    ctx.globalAlpha = 0.45; ctx.fillStyle = '#4b7fb8';
+    for (const a of CARDINALS) {
+      ctx.save(); ctx.rotate(a);
+      ctx.fillRect(HULL_OUTER, -5, RADIATOR_OUT - HULL_OUTER, 10);
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // panel ticks — 12 radial dividers across the band
+    ctx.save(); ctx.rotate(ringAngle);
+    ctx.globalAlpha = 0.7; ctx.strokeStyle = '#5f89b8'; ctx.lineWidth = BAND_W - 2;
+    ctx.beginPath(); ctx.arc(0, 0, HULL_R, 0, TAU);
+    const tickPeriod = (TAU * HULL_R) / 12;
+    ctx.setLineDash([0.025 * HULL_R, tickPeriod - 0.025 * HULL_R]);
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+
+    // vents — dark slots along the outer band
+    ctx.save(); ctx.rotate(ringAngle);
+    ctx.globalAlpha = 0.85; ctx.strokeStyle = '#12233b'; ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.arc(0, 0, HULL_R + 3, 0, TAU);
+    const ventPeriod = (TAU * HULL_R) / 8;
+    ctx.setLineDash([4, ventPeriod - 4]);
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+
+    // hull bevels — outer highlight and inner shadow
+    ctx.save(); ctx.rotate(ringAngle);
+    ctx.globalAlpha = 0.5; ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, HULL_OUTER - 1.5, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.strokeStyle = '#0f1e34'; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.arc(0, 0, HULL_INNER + 1.5, 0, TAU); ctx.stroke();
+    ctx.restore();
+
+    // truss spokes — hub to ring on the diagonals
+    ctx.save();
+    ctx.strokeStyle = '#3a638f'; ctx.lineWidth = 7;
+    for (const a of DIAGONALS) spoke(ctx, a, CORE_R - 3, HULL_INNER);
+    ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 2.6; ctx.globalAlpha = 0.8;
+    for (const a of DIAGONALS) spoke(ctx, a, CORE_R - 3, HULL_INNER);
+    ctx.restore();
+
+    // docking collars — inner hardware on the diagonals
+    ctx.save(); ctx.rotate(hubAngle);
+    ctx.fillStyle = '#35598a'; ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 0.8;
+    for (const a of DIAGONALS) {
+      ctx.save(); ctx.rotate(a); ctx.translate(DOCK_R, 0); ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-6.5, -6.5, 13, 13);
+      ctx.strokeRect(-6.5, -6.5, 13, 13);
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
 
   // 3 — lit window row (constant count of 44; dash length scales with radius)
   const winPeriod = (TAU * (HULL_R - 4)) / 44;
