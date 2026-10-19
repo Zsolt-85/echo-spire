@@ -58,9 +58,10 @@ draws the 54px in-run ring and the full-bleed menu hero. Nothing in the module t
 
 ### Detail tiering
 
-Micro-detail only exists above a pixel threshold. When `r < 40`, the renderer automatically drops
-to the `lite` path — band, membrane, windows, nozzles, core — and skips panel ticks, vents,
-docking collars, spokes and bevels. This is what keeps the ship legible at 108px instead of
+Micro-detail only exists above a pixel threshold. When `r < DETAIL_MIN_R` (96), the renderer automatically drops
+to the `lite` path - band, membrane, windows, nozzles, core - and skips panel ticks, vents,
+docking collars, spokes and bevels. The in-run ring is r=54, so gameplay takes the lite path; the
+menu hero (r >= 320) takes full detail. This is what keeps the ship legible at 108px instead of
 turning into grey mush.
 
 Thresholds live in one exported constant (`DETAIL_MIN_R`) so they are tuned in one place.

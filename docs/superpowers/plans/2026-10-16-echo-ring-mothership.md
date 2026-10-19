@@ -35,7 +35,8 @@ Pure, DOM-free maths. Everything else builds on this.
 - Produces:
   - `HULL_R = 50`, `BAND_W = 16`, `HULL_OUTER = 58`, `HULL_INNER = 42`
   - `CORE_R = 17`, `MEMBRANE_R = 44`, `NOZZLE_OUT = 64`, `RADIATOR_OUT = 72`, `DOCK_R = 34`
-  - `DETAIL_MIN_R = 40`
+  - `DETAIL_MIN_R = 96` (full detail only above this radius; the in-run ring is r=54, so it
+    takes the lite path — see the Detail tiering note in the spec)
   - `SEGMENT_START = Math.PI / 4 - GAP_ARC / 2` (≈ 0.5454 rad — half a gap before the diagonal,
     so gap **centres** land on 45/135/225/315 and dash centres land on the cardinals)
   - `segmentDash(r: number): number[]` — 8-entry dash pattern that tiles **exactly once** around the circumference, gaps landing on the diagonals
@@ -83,7 +84,7 @@ describe('ring geometry', () => {
   it('drops to lite detail below the radius threshold', () => {
     expect(detailFor(DETAIL_MIN_R)).toBe('full');
     expect(detailFor(DETAIL_MIN_R - 1)).toBe('lite');
-    expect(detailFor(54)).toBe('full');
+    expect(detailFor(54)).toBe('lite');
   });
 
   it('derives inner and outer hull radii from the band width', () => {
@@ -111,10 +112,10 @@ export const MEMBRANE_R = 44;
 export const NOZZLE_OUT = 64;
 export const RADIATOR_OUT = 72;
 export const DOCK_R = 34;
-export const DETAIL_MIN_R = 40;
-export const SEGMENT_START = Math.PI / 4;
+export const DETAIL_MIN_R = 96;
 const N_SEGMENTS = 4;
-const GAP_ARC = 0.48;  // radians-worth of arc per gap, as a multiple of r
+const GAP_ARC = 0.48;  // angular gap per segment, radians (arc length per unit radius)
+export const SEGMENT_START = Math.PI / 4 - GAP_ARC / 2;  // gap CENTRES on the diagonals
 
 export function segmentDash(r: number): number[] {
   const gap = GAP_ARC * r;
