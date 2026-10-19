@@ -1049,6 +1049,6 @@ Automated browser QA is unavailable in this environment (`agent-browser` fails w
 
 **Placeholder scan:** no TBD/TODO; every step contains real code or a real command.
 
-**Type consistency:** `MothershipOpts`, `RingMotion`, `Detail`, `segmentDash`, `drawMothership`, `defaultMotion`, `menuRingRadius` are each defined in exactly one task and consumed with matching signatures. `DIAGONALS` is introduced in Task 3 and first used in Task 4. `RADIATOR_OUT` and `DOCK_R` are declared in Task 1 and first used in Task 4.
+**Type consistency:** `MothershipOpts`, `RingMotion`, `Detail`, `segmentDash`, `drawMothership`, `defaultMotion`, `menuRingRadius` are each defined in exactly one task and consumed with matching signatures. `DIAGONALS` and `spoke()` are introduced in Task 4, where they are first used. `RADIATOR_OUT` and `DOCK_R` are declared in Task 1 and first used in Task 4.
 
 **Known risk carried from the spec:** lowering `#menu-overlay` opacity could hurt text contrast; Task 7 step 5 makes this an explicit manual check rather than assuming it.
