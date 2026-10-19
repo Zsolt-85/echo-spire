@@ -1,4 +1,4 @@
-import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase,setMenuView,menuView} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {recomputeStats,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
+import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase,setMenuView,menuView} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {recomputeStats,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';import {drawMothership,defaultMotion,menuRingRadius} from './game/mothership.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
 import {wsBatchOf,wsBatchUnlocked,lifetimeCores} from './state/training.js';
 import {WS_BATCH_COST} from './sim/balance.js';
@@ -7,6 +7,10 @@ import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocke
 import {WAVESKIP_CMD} from './sim/balance.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
+const mcv=document.getElementById('menu-ship') as HTMLCanvasElement|null;
+const mctx=mcv?mcv.getContext('2d')!:null;
+function fitMenu(){if(!mcv)return;mcv.width=Math.ceil(innerWidth*devicePixelRatio);mcv.height=Math.ceil(innerHeight*devicePixelRatio);}
+fitMenu();addEventListener('resize',fitMenu);
 function fit(){cv.width=560*devicePixelRatio;cv.height=560*devicePixelRatio;}
 fit();addEventListener('resize',fit);
 const s=freshState();
@@ -60,7 +64,7 @@ try{const sv:any=loadGame();if(sv){if(typeof sv.best==='number')best=Math.floor(
 function persist():void{best=Math.max(best,s.wave);(s as unknown as {best?:number}).best=best;try{saveGame({...s,best} as any);}catch{}}
 let lastDraw:number|null=null;
 function finishRun():void{const prev=best;const sum=endRun(s);persist();showGameOver(sum,prev);loop.setPaused(true);}
-const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(isDead(s))finishRun();},()=>{const now=performance.now();const dt=Math.min(0.1,(now-(lastDraw??now))/1000);lastDraw=now;ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,now,s,dt);ctx.restore();renderHud(s);});
+const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(isDead(s))finishRun();},()=>{const now=performance.now();const dt=Math.min(0.1,(now-(lastDraw??now))/1000);lastDraw=now;ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,now,s,dt);ctx.restore();if(mctx&&getPhase()==='menu'){mctx.save();mctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);mctx.clearRect(0,0,innerWidth,innerHeight);drawMothership(mctx,innerWidth/2,innerHeight/2,{r:menuRingRadius(innerWidth,innerHeight),hpFrac:1,t:now,motion:defaultMotion('menu')});mctx.restore();}renderHud(s);});
 function wire(id:string,fn:()=>void){const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{fn();renderHud(s);});}
 wire('buy-dmg',()=>{buyUpgrade(s,'dmg');});
 wire('buy-rate',()=>{buyUpgrade(s,'rate');});

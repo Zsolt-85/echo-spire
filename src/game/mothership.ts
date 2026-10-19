@@ -8,6 +8,12 @@ export const NOZZLE_OUT = 64;
 export const RADIATOR_OUT = 72;
 export const DOCK_R = 34;
 export const DETAIL_MIN_R = 96;
+export const MENU_MIN_R = 320;
+export const MENU_RING_SPAN = 0.58;
+
+export function menuRingRadius(vw: number, vh: number): number {
+  return Math.max(MENU_MIN_R, Math.max(vw, vh) * MENU_RING_SPAN);
+}
 
 const N_SEGMENTS = 4;
 const GAP_ARC = 0.48;  // angular gap per segment, radians (arc length per unit radius)

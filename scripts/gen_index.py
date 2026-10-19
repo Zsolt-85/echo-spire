@@ -61,6 +61,7 @@ html = f'''<!doctype html>
 
   <!-- ============ MAIN MENU HUB ============ -->
   <div id="menu-overlay">
+    <canvas id="menu-ship" aria-hidden="true"></canvas>
     <div class="menu-sheet">
       <div class="menu-sticky">
         <div class="brand">
