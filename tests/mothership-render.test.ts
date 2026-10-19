@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { makeCtx } from './helpers/canvas-stub.js';
-import { drawMothership, defaultMotion, HULL_OUTER, type RingMotion } from '../src/game/mothership.js';
+import { drawMothership, defaultMotion, HULL_OUTER, HULL_R, segmentDash, type RingMotion } from '../src/game/mothership.js';
 
 const MOTIONS: RingMotion[] = ['counter', 'co', 'locked'];
 
@@ -14,6 +14,8 @@ describe('drawMothership — lite tier', () => {
         }
       }
     }
+    const { ctx } = makeCtx();
+    expect(() => drawMothership(ctx, 100, 100, { r: 54, hpFrac: 1, t: 0, motion: 'locked', hitFlash: 1, hitAngle: 0.5 })).not.toThrow();
   });
 
   it('emits draw operations', () => {
@@ -36,6 +38,7 @@ describe('drawMothership — lite tier', () => {
     const s2 = scaleArg(b.calls);
     expect(s1).toBeCloseTo(54 / HULL_OUTER, 9);
     expect(s2 / s1).toBeCloseTo(2, 9);
+    expect(a.calls.length).toBeGreaterThan(10);
     expect(a.calls.length).toBe(b.calls.length);
   });
 
@@ -43,7 +46,9 @@ describe('drawMothership — lite tier', () => {
     const { ctx, calls } = makeCtx();
     drawMothership(ctx, 100, 100, { r: 54, hpFrac: 1, t: 0, motion: 'locked', detail: 'lite' });
     const dashCalls = calls.filter(c => c.op === 'setLineDash');
-    expect(dashCalls.length).toBeGreaterThan(0);
+    const dashArgs = dashCalls.map(c => c.args[0] as number[]);
+    expect(dashArgs).toContainEqual(segmentDash(HULL_R));
+    expect(dashArgs).toContainEqual([]);
   });
 
   it('balances save and restore', () => {
@@ -51,6 +56,7 @@ describe('drawMothership — lite tier', () => {
     drawMothership(ctx, 100, 100, { r: 54, hpFrac: 0.4, t: 1234, motion: 'counter' });
     const saves = calls.filter(c => c.op === 'save').length;
     const restores = calls.filter(c => c.op === 'restore').length;
+    expect(saves).toBeGreaterThan(0);
     expect(saves).toBe(restores);
   });
 

@@ -76,6 +76,7 @@ export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: numb
   const hubAngle = o.motion === 'counter' ? -(o.t / 26000) * TAU : 0;
 
   ctx.save();
+  ctx.setLineDash([]);
   ctx.translate(x, y);
   ctx.scale(o.r / HULL_OUTER, o.r / HULL_OUTER);
 
@@ -90,12 +91,12 @@ export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: numb
   ctx.save(); ctx.rotate(ringAngle);
   ctx.strokeStyle = '#243b5c'; ctx.fillStyle = '#243b5c';
   band(ctx, HULL_R, BAND_W);
-  ctx.strokeStyle = hp > 0.5 ? '#5eead4' : hp > 0.25 ? '#fbbf24' : '#f43f5e';
+  ctx.strokeStyle = hp >= 0.5 ? '#5eead4' : hp > 0.25 ? '#fbbf24' : '#f43f5e';
   band(ctx, HULL_R, BAND_W - 9);
   ctx.restore();
 
   // 3 — lit window row (constant count of 44; dash length scales with radius)
-  const winPeriod = (TAU * HULL_R) / 44;
+  const winPeriod = (TAU * (HULL_R - 4)) / 44;
   ctx.save();
   ctx.strokeStyle = '#fef3c7';
   ctx.lineWidth = 1.6;
@@ -108,6 +109,7 @@ export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: numb
   // 4 — engine nozzles + glow
   ctx.save(); ctx.rotate(ringAngle);
   ctx.strokeStyle = '#38bdf8'; ctx.fillStyle = '#38bdf8';
+  ctx.lineWidth = 1.2;
   ctx.globalAlpha = 0.9;
   for (const a of CARDINALS) nozzle(ctx, a);
   ctx.fillStyle = '#7dd3fc'; ctx.globalAlpha = 0.85;
@@ -120,6 +122,7 @@ export function drawMothership(ctx: CanvasRenderingContext2D, x: number, y: numb
   ctx.save(); ctx.rotate(hubAngle);
   ctx.globalAlpha = 0.35 + 0.65 * hp;
   ctx.strokeStyle = '#5eead4'; ctx.fillStyle = '#1b2f4c';
+  ctx.lineWidth = 1;
   ctx.beginPath();
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * TAU + Math.PI / 8;
