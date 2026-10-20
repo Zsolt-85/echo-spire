@@ -42,7 +42,7 @@ describe('menu hero canvas', () => {
     expect(rule).not.toMatch(/rgba\(2,4,8,\.92\)/);
     expect(rule).toMatch(/radial-gradient/);
     expect(rule).toMatch(/backdrop-filter:none/);
-    expect(css).toMatch(/#menu-ship\{[^}]*position:absolute/);
+    expect(css).toMatch(/#menu-ship\{[^}]*position:fixed/);
     expect(css).toMatch(/#menu-ship\{[^}]*pointer-events:none/);
   });
 
