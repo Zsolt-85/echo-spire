@@ -106,6 +106,8 @@ export function drawSpace(ctx:CanvasRenderingContext2D,w:number,h:number,t:numbe
     for(const e of s.fx)e.ttl-=frameDt;
     s.fx=s.fx.filter(e=>e.ttl>0);
   }
+  const pushFx2=(e:{kind:'beam'|'spark'|'flash';x:number;y:number;tx:number;ty:number;ttl:number},game?:GameState)=>{const fx=(game??s)?.fx??[];fx.push(e);if(fx.length>60)fx.splice(0,fx.length-60);};
+  if(s&&s.ships){for(const sh of s.ships){if(sh.hp<=0&&Math.random()<0.3){pushFx2({kind:'spark',x:sh.x,y:sh.y,tx:sh.x,ty:sh.y,ttl:0.35},s as GameState);}}}
   ctx.restore();
   ctx.globalAlpha=1;
 }

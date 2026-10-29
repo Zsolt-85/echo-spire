@@ -110,6 +110,7 @@ let skipOn=false;
 wire('btn-skip',()=>{skipOn=!skipOn;const el=document.getElementById('btn-skip');if(el)el.classList.toggle('on',skipOn);});
 function launch():void{restartRun(s);recomputeStats(s);s.shield=s.shieldMax??0;if(skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;hideOverlays();loop.setPaused(false);}
 wire('btn-retreat',()=>{if(getPhase()==='run')finishRun();});
+wire('btn-endrun',()=>{if(getPhase()==='run')finishRun();});
 wire('btn-collapse',()=>{  const gained=collapseRun(s);
   if(gained>0){persist();}
   else{
