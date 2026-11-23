@@ -16,23 +16,36 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 |---|---|
 | `npm run dev` | Dev server with hot reload |
 | `npm run build` | Static build into `dist/` |
-| `npm test` | Full suite (Vitest, 91 tests) |
+| `npm test` | Full suite (Vitest, 169 tests) |
 | `node scripts/sim.mjs` | Headless balance check — asserts first-run wall lands waves 40–60 + Academy projection |
 
 ## How a run works
 
-1. **Menu** — Launch Mothership, or spend cores in the Workshop first.
+1. **Menu** — Launch Mothership, Launch Daily Run (the shared UTC-seeded course), or spend cores in the Workshop first. The Board tab lists top runs; pick one to race its ghost.
 2. **Run** — Enemies trickle in from shifting rifts (every 3rd ship strafes instead of bee-lining). Your guns fire automatically; spend Flux on Forge upgrades mid-fight. Every 10 waves pick 1-of-3 Augments. Rift Surges spawn golden Cache Ships worth Void Essence.
 3. **Death at hull 0** — Run summary (wave, kills, Flux, Essence, time, cores earned) → Relaunch fresh or back to Menu. Collapse at wave 50+ for bonus cores.
-4. **Meta** — Cores buy permanent Workshop tracks; the Training Academy researches in real time (offline gains capped at 12h); Echo ghost replays your best run beside you.
+4. **Meta** — Cores buy permanent Workshop tracks; the Training Academy researches in real time (offline gains capped at 12h); an Echo ghost can be armed from the Board to replay a run beside you.
+
+## The ship
+
+- **Segmented ring station** — the mothership is drawn procedurally on canvas, with no image assets. Four hull segments wrap a membrane core, with lit windows and nozzles at every size, plus radiators, trusses, docking collars, bevels, vents, and panel ticks at full detail.
+- **Two surfaces, one renderer** — the same `drawMothership` call paints the in-run ship and the menu hero, so the arena and menu cannot drift apart. In the menu it is a large halo cropped by the viewport behind the sheet; in the arena it sits centered on the play field.
+- **Motion** — in the menu the ring counter-rotates against the hub (44s ring / 26s hub); during runs it co-rotates as one body (52s).
+- **Detail tiering** — micro-detail is dropped automatically below `DETAIL_MIN_R` (96), so the 108px in-run ring draws the clean lite tier while the menu hero draws full detail.
+- **Reduced motion** — `prefers-reduced-motion: reduce` freezes rotation; the core still breathes.
 
 ## Controls
 
 - **x1 / x2 / x4 + Pause** — game speed, top dock. Auto-pauses when the tab hides.
 - **Forge cards (in run, Flux)** — Railguns, Targeting, Hull, Range, Regen, Crit, Volley, Bounce. Each card shows description + current → next values; glowing cards are affordable.
-- **Workshop cards (menu, cores)** — 12 tracks in 3 invest batches (Batch 1 open: dmg/rate/maxHull/range; Batch 2 at 100 lifetime core-equivalent: regen/crit/volley/bounce; Batch 3 at 500: essence/startFlux/bulkhead/scope). Locked batches show live invest progress; lifetime spend counts workshop + research + ult shards. Menu scrolls with a sticky Launch bar; the arena stays visible behind it.
+- **Workshop cards (menu, cores)** — 12 tracks in 3 invest batches (Batch 1 open: dmg/rate/maxHull/range; Batch 2 at 100 lifetime core-equivalent: regen/crit/volley/bounce; Batch 3 at 500: essence/startFlux/bulkhead/scope). Locked batches show live invest progress; lifetime spend counts workshop + research + ult shards. Menu scrolls with a sticky Launch bar; while it is open the arena layout and top dock are hidden, and the ring hero draws on its own canvas behind the sheet.
 - **Collapse** — prestige once past wave 50.
 - **Retreat** — end the current run any time from the dock; same summary screen as death.
+- **Daily Run** — "Launch Daily Run" seeds rifts, crits and surges from the UTC date (`echo-spire:YYYY-MM-DD`), so everyone gets the same course that day. Wave skip is disabled for dailies — all daily runs start on wave 1. Finishing any run posts its best wave and ghost trace to the board automatically.
+- **Board tab** — the menu "Board" tab shows the top all-time runs next to a daily card (UTC date + your local best). Click an entry to fetch its ghost trace and arm it for your next launch. The board is local by default (your submissions plus seeded demo entries — Vango, Nyx-7 and The Wall — each with a sample trace you can race).
+- **Ghost racing** — with a ghost armed, launching replays that run's translucent violet Echo ring pinned in a free arena corner; a single Echo pill in the topbar shows its live wave and kill count so you can chase it.
+- **Share run** — "Share run" on the death/retreat summary renders a PNG run card (wave, kills, ghost label) and uses the Web Share API, falling back to a file download when sharing is unavailable.
+- **Leaderboard backend (offline-first)** — no server needed: board entries, ghost traces and your anonymous pilot id live in localStorage. To use a shared HTTP backend instead, build with `VITE_LEADERBOARD_URL=<base-url>`; when unset, the game stays local-first and never calls the network.
 - **Fresh start** — open the game with `?fresh=1` once (e.g. http://localhost:5173/?fresh=1) to wipe the save and boot clean, or use Wipe all data in the menu.
 - **Ultimates** — kills charge the dock meter 0–100 (+2 per kill, +10 per Cache kill). Unlock each ultimate once in the Workshop Ultimates tab for Stellar Shards (Nova 2, Overdrive 3, Aegis 5). Fire buttons in the dock enable only at full charge + unlocked: Nova Burst deals 10x dmg to every ship on screen, Overdrive triples rate for 8s, Aegis blocks all hull damage for 12s. Charge resets each run; unlocks persist.
 
@@ -60,21 +73,21 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 
 ```
 src/
-  game/    loop, update (sim tick), render (canvas), spawning, rifts, lifecycle, ships, echo
+  game/    loop, update (sim tick), render (canvas), spawning, rifts, lifecycle, ships, mothership, echo, rng, daily, ghost
   sim/     balance.ts — ALL tuning lives here (costs, scaling, workshop tables)
   state/   save (localStorage), prestige, training, workshop
-  ui/      hud, panel, cards (descriptions), menu (phases + overlays)
-  api/     leaderboard stub (offline-first, backend later)
+  ui/      hud, panel, cards (descriptions), menu (phases + overlays), leaderboard, run-card
+  api/     leaderboard client — local-first by default, HTTP via VITE_LEADERBOARD_URL
 scripts/   sim.mjs — headless 1000-wave balance check
 tests/     Vitest suites mirroring every system
 docs/      specs + implementation plans per feature
 design-system/  persisted UI direction (cyan→violet neon, glassmorphism, Orbitron/JetBrains Mono)
-mockup-ui*.html  UI concept iterations (v4 = mothership direction)
+mockup-ui*.html  UI concept iterations; v4's ring-station direction shipped as the mothership renderer
 ```
 
 ## Docs (kept current)
 
-- Spec: `docs/superpowers/specs/2026-10-13-echo-spire-design.md`
-- Plans: `docs/superpowers/plans/` — one file per feature wave, each ending in reviewed, tested commits.
+- Specs: `docs/superpowers/specs/2026-10-13-echo-spire-design.md`, `docs/superpowers/specs/2026-10-16-echo-ring-mothership-design.md`, `docs/superpowers/specs/2026-11-23-competitive-layer-design.md` (accepted)
+- Plans: `docs/superpowers/plans/` — one file per feature wave, each ending in reviewed, tested commits. The ring-station work is in `docs/superpowers/plans/2026-10-16-echo-ring-mothership.md`.
 
 > This README is maintained with every change — new systems, controls, and scripts land here when they land in the game.

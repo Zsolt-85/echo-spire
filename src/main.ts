@@ -1,15 +1,41 @@
-import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase,setMenuView,menuView} from './ui/menu.js';import {isDead,endRun,restartRun} from './game/lifecycle.js';import {recomputeStats,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';
+import {startLoop} from './game/loop.js';import {drawSpace} from './game/render.js';import {freshState} from './game/state.js';import {tickSim} from './game/update.js';import {renderHud} from './ui/hud.js';import {buyUpgrade} from './ui/panel.js';import {saveGame,loadGame,wipeSave,isFreshBoot,hadLegacySave} from './state/save.js';import {collapseRun} from './state/prestige.js';import {showMenu,showGameOver,hideOverlays,getPhase,setMenuView,menuView} from './ui/menu.js';import {isDead,endRun,restartRun,type RunSummary} from './game/lifecycle.js';import {recomputeStats,buyWorkshop,WORKSHOP_STATS} from './state/workshop.js';import {drawMothership,defaultMotion,menuRingRadius} from './game/mothership.js';
 import {setForgeTab,setWsTab} from './ui/tabs.js';
 import {wsBatchOf,wsBatchUnlocked,lifetimeCores} from './state/training.js';
 import {WS_BATCH_COST} from './sim/balance.js';
 import {buyUlt,fireUlt,ULTS} from './game/ultimates.js';
-import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,switchResearch,setAuto,autoOn,THREADS,TRAIN_SKILLS,labOfflineMult,migrateDuplicates,type LineId} from './state/training.js';
+import {startResearch,progressTraining,advanceOffline,trainingLevel,speedUnlocked,switchResearch,setAuto,autoOn,THREADS,TRAIN_SKILLS,labOfflineMult,migrateDuplicates,RESEARCH_LINES,type LineId} from './state/training.js';
 import {WAVESKIP_CMD} from './sim/balance.js';
+import {clientFromEnv,entryHash,type RunEntry} from './api/leaderboard.js';
+import {startDaily,startNormal,dateKey} from './game/daily.js';
+import {startTrace,sampleTrace,type GhostTrace} from './game/ghost.js';
+import {renderBoard,renderDailyCard} from './ui/leaderboard.js';
+import {shareRunCard} from './ui/run-card.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
+const mcv=document.getElementById('menu-ship') as HTMLCanvasElement|null;
+const mctx=mcv?mcv.getContext('2d')!:null;
+function fitMenu(){if(!mcv)return;mcv.width=Math.ceil(innerWidth*devicePixelRatio);mcv.height=Math.ceil(innerHeight*devicePixelRatio);}
+fitMenu();addEventListener('resize',fitMenu);
 function fit(){cv.width=560*devicePixelRatio;cv.height=560*devicePixelRatio;}
 fit();addEventListener('resize',fit);
 const s=freshState();
+// Competitive layer: offline-first board client and anonymous local identity.
+// Nothing here throws or reaches the network until a run is submitted.
+const client=clientFromEnv();
+function newRunId():string{return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;}
+function playerIdentity():{id:string;name:string}{
+  try{
+    let id=localStorage.getItem('echospire.player.v1');
+    if(!id){id=`pilot-${Math.random().toString(36).slice(2,10)}`;localStorage.setItem('echospire.player.v1',id);}
+    return {id,name:'Pilot'};
+  }catch{return {id:'pilot-local',name:'Pilot'};}
+}
+const me=playerIdentity();
+let trace:GhostTrace|null=null;
+let runDailyDate:string|undefined;
+let selectedGhost:GhostTrace|null=null;
+let selectedGhostEntry:RunEntry|null=null;
+let lastSummary:RunSummary|null=null;
 if(typeof location!=='undefined'&&isFreshBoot(location.search))wipeSave();
 // v2 clean break (grind-economy plan Task 4): a v1 payload refuses to load
 // (version gate in loadGame), so flag it for the menu notice, then wipe the
@@ -59,8 +85,21 @@ try{const sv:any=loadGame();if(sv){if(typeof sv.best==='number')best=Math.floor(
 (s as unknown as {best?:number}).best=best;
 function persist():void{best=Math.max(best,s.wave);(s as unknown as {best?:number}).best=best;try{saveGame({...s,best} as any);}catch{}}
 let lastDraw:number|null=null;
-function finishRun():void{const prev=best;const sum=endRun(s);persist();showGameOver(sum,prev);loop.setPaused(true);}
-const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(isDead(s))finishRun();},()=>{const now=performance.now();const dt=Math.min(0.1,(now-(lastDraw??now))/1000);lastDraw=now;ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,now,s,dt);ctx.restore();renderHud(s);});
+function submitRun(sum:RunSummary):void{
+  if(!trace)return;
+  sampleTrace(trace,s,true);
+  const base:Omit<RunEntry,'hash'>={
+    id:newRunId(),playerId:me.id,playerName:me.name,
+    best:sum.wave,kills:sum.kills,durationMs:Math.max(0,Math.round(sum.timeS*1000)),
+    seed:s.seed??0,dailyDate:runDailyDate,submittedAt:Date.now(),hasTrace:true,
+  };
+  // The client takes a GhostTrace and does the encoding; fire-and-forget so a
+  // missing/offline backend never interrupts the game-over flow.
+  void client.submit({...base,hash:entryHash(base)},trace).catch(()=>{});
+  trace=null;
+}
+function finishRun():void{const prev=best;const sum=endRun(s);lastSummary=sum;submitRun(sum);persist();showGameOver(sum,prev);loop.setPaused(true);}
+const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(trace)sampleTrace(trace,s);s.ghostT=(s.timeS??0)*1000;if(isDead(s))finishRun();},()=>{const now=performance.now();const dt=Math.min(0.1,(now-(lastDraw??now))/1000);lastDraw=now;ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,now,s,dt);ctx.restore();if(mctx&&getPhase()==='menu'){mctx.save();mctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);mctx.clearRect(0,0,innerWidth,innerHeight);drawMothership(mctx,innerWidth/2,innerHeight/2,{r:menuRingRadius(innerWidth,innerHeight),hpFrac:1,t:now,motion:defaultMotion('menu')});mctx.restore();}renderHud(s);});
 function wire(id:string,fn:()=>void){const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{fn();renderHud(s);});}
 wire('buy-dmg',()=>{buyUpgrade(s,'dmg');});
 wire('buy-rate',()=>{buyUpgrade(s,'rate');});
@@ -104,8 +143,42 @@ wire('btn-speed-8',()=>{gateSpeed(8,'btn-speed-8',()=>{loop.setSpeed(8);markSpee
 markSpeed('btn-speed-1');
 let skipOn=false;
 wire('btn-skip',()=>{skipOn=!skipOn;const el=document.getElementById('btn-skip');if(el)el.classList.toggle('on',skipOn);});
-function launch():void{restartRun(s);recomputeStats(s);s.shield=s.shieldMax??0;if(skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;hideOverlays();loop.setPaused(false);}
+function launch(opts:{daily?:boolean}={}):void{
+  restartRun(s);
+  // restartRun resets rngState/seed/mode to 0/0/'normal'; seed the run right
+  // after it so daily runs are deterministic and traces carry the right seed.
+  if(opts.daily){const now=new Date();startDaily(s,now);runDailyDate=dateKey(now);}
+  else{startNormal(s);runDailyDate=undefined;}
+  recomputeStats(s);s.shield=s.shieldMax??0;
+  // Daily runs share one seed and must start on the same wave for everyone;
+  // the opt-in wave skip is a normal-run convenience only.
+  if(!opts.daily&&skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;
+  if(selectedGhost){s.ghostTrace=selectedGhost;s.ghostT=0;}
+  hideOverlays();loop.setPaused(false);
+  trace=startTrace(newRunId(),s.seed??0);
+  sampleTrace(trace,s,true);
+}
+function setBoardStatus(msg:string):void{const n=document.getElementById('board-status');if(n)n.textContent=msg;}
+function refreshBoard():void{
+  const meta=document.getElementById('daily-meta');
+  if(meta)renderDailyCard(meta,dateKey(new Date()),best);
+  const host=document.getElementById('board-list');
+  if(!host)return;
+  void client.list({period:'all',limit:10}).then(rows=>{
+    renderBoard(host,rows,id=>{
+      void client.trace(id).then(t=>{
+        if(!t){setBoardStatus('That echo has no saved trace.');return;}
+        selectedGhost=t;s.ghostTrace=t;s.ghostT=0;
+        selectedGhostEntry=rows.find(r=>r.id===id)??null;
+        const name=selectedGhostEntry?.playerName??'Echo';
+        setBoardStatus(`${name} armed — Wave ${t.finalWave}. Launch to race.`);
+        renderHud(s);
+      }).catch(()=>{});
+    });
+  }).catch(()=>{});
+}
 wire('btn-retreat',()=>{if(getPhase()==='run')finishRun();});
+wire('btn-endrun',()=>{if(getPhase()==='run')finishRun();});
 wire('btn-collapse',()=>{  const gained=collapseRun(s);
   if(gained>0){persist();}
   else{
@@ -116,6 +189,8 @@ wire('btn-collapse',()=>{  const gained=collapseRun(s);
 });
 wire('btn-launch',()=>{launch();});
 wire('btn-launch-secondary',()=>{launch();});
+wire('btn-launch-daily',()=>{launch({daily:true});});
+wire('tab-menu-board',()=>{setMenuView('board');refreshBoard();});
 wire('tab-menu-home',()=>{setMenuView('home');});
 wire('btn-back',()=>{setMenuView('home');});
 wire('btn-wipe',()=>{
@@ -127,6 +202,7 @@ wire('btn-wipe',()=>{
   }
 });
 wire('btn-relaunch',()=>{launch();});
+wire('btn-share',()=>{if(lastSummary)void shareRunCard(lastSummary,selectedGhostEntry);});
 wire('btn-menu-workshop',()=>{setMenuView('workshop');showMenu(best);loop.setPaused(true);});
 wire('tab-menu-workshop',()=>{setMenuView('workshop');});
 wire('tab-menu-academy',()=>{setMenuView('academy');});
@@ -136,8 +212,8 @@ for(const t of THREADS){
   wire(`btn-switch-${t}`,()=>{const pick=document.getElementById(`lab-pick-${t}`) as HTMLSelectElement|null;const line=((pick?.value ?? 'gunnery') as LineId);switchResearch(s,t,line,Date.now(),Math.max(best,s.wave));});
   wire(`btn-auto-${t}`,()=>{setAuto(s,t,!autoOn(s,t));});
 }
-wire('btn-over-menu',()=>{showMenu(best);loop.setPaused(true);});
-showMenu(best);loop.setPaused(true);
+wire('btn-over-menu',()=>{showMenu(best);loop.setPaused(true);refreshBoard();});
+showMenu(best);loop.setPaused(true);refreshBoard();
 if(typeof window!=='undefined'){
   setInterval(()=>{persist();},10000);
   setInterval(()=>{progressTraining(s);renderHud(s);},5000);

@@ -1,15 +1,15 @@
 import type {GameState} from '../game/state.js';
 import {upgradeCost, type Stat} from './panel.js';
 import {applyAugment} from '../game/rifts.js';
-import {renderAugmentModal} from './menu.js';
 import {WORKSHOP_STATS, workshopCost, type WorkshopStat} from '../state/workshop.js';
 import {menuView} from '../ui/menu.js';
 import {waveIntel} from '../game/spawning.js';
+import {ghostAt} from '../game/ghost.js';
 import {FORGE_CATS, WS_CATS, getForgeTab, getWsTab} from './tabs.js';
 import {ULT_COST, ULT_CHARGE_MAX, fluxForKill, WAVESKIP_CMD, WS_BATCH_COST, type UltId} from '../sim/balance.js';
 import {ULTS, canFire} from '../game/ultimates.js';
 import {TRAIN_SKILLS, THREADS, RESEARCH_LINES, FAMILIES, lineLevel, researchCost, lineGate, familyProgress, wsBatchUnlocked, wsBatchOf, lifetimeCores, labWorkshopCostMult, labSpeedMult, trainingLevel, speedUnlocked, type LineId, type FamilyId} from '../state/training.js';
-import {describeStat, describeWorkshop} from './cards.js';
+import {describeStat, describeWorkshop, upgradeBlurb} from './cards.js';
 
 function txt(id: string, v: string): void { const el = document.getElementById(id); if (el) el.textContent = v; }
 
@@ -45,6 +45,8 @@ export function renderHud(s: GameState): void {
   const intel = waveIntel(s.wave);
   const hp = intel.hp >= 10000 ? (intel.hp / 1000).toFixed(1) + 'K' : String(intel.hp);
   txt('hud-intel', `${intel.count} ships • ${hp} HP • ${intel.dmg} dmg`);
+  const ghost = s.ghostTrace ? ghostAt(s.ghostTrace, s.ghostT ?? 0) : null;
+  txt('hud-ghost', ghost ? `Wave ${Math.round(ghost.wave)} · ${Math.round(ghost.kills)} kills` : '-');
 
   if (mv === 'workshop') {
     const w = (s as unknown as { workshop?: Record<string, number> }).workshop ?? {};
@@ -189,6 +191,25 @@ export function renderHud(s: GameState): void {
   if (b8) b8.style.display = sp >= 8 ? '' : 'none';
   const skip = document.getElementById('btn-skip');
   if (skip) skip.style.display = trainingLevel(s, 'command') >= WAVESKIP_CMD ? '' : 'none';
+  renderAugmentModal(s);
+}
+
+/** Augment picker (1-of-3 every 10 waves). Rebuilt only when the offer changes. */
+function renderAugmentModal(s: GameState): void {
+  const modal = document.getElementById('augment-modal');
+  const box = document.getElementById('augment-opts');
+  if (!modal || !box) return;
+  const opts = s.pendingAugment;
+  if (!opts || opts.length === 0) { modal.hidden = true; box.replaceChildren(); return; }
+  modal.hidden = false;
+  if (box.childElementCount === opts.length) return;
+  box.replaceChildren();
+  for (const o of opts) {
+    const b = document.createElement('button');
+    b.textContent = o;
+    b.addEventListener('click', () => { applyAugment(s, o); renderAugmentModal(s); });
+    box.appendChild(b);
+  }
 }
 
 function renderAcademy(s: GameState): void {
@@ -198,33 +219,35 @@ function renderAcademy(s: GameState): void {
   const best = Math.max((s as unknown as { best?: number }).best ?? 0, s.wave ?? 0);
   for (const f of FAMILIES) {
     const prog = familyProgress(s, f.id, best);
-    const lines = (RESEARCH_LINES as unknown as Record<string, { name: string; desc: string; fam: string }>);
-    const famLines = Object.values(lines).filter(l => l.fam === f.id);
-    const famDiv = document.createElement('div');
-    famDiv.className = 'lab-fam';
-    famDiv.textContent = prog.unlocked ? `${f.id} — ${famLines.length} lines — unlocked` : `${f.id} — ${famLines.length} lines — Best ${prog.need} to unlock`;
-    host.appendChild(famDiv);
+    const famLines = Object.entries(RESEARCH_LINES).filter(([, l]) => l.fam === f.id);
+    const head = document.createElement('div');
+    head.className = 'lab-fam';
+    head.textContent = `${f.cat} — ${famLines.length} line${famLines.length === 1 ? '' : 's'}${prog.unlocked ? '' : ` · best ${prog.need} to reveal`}`;
+    host.appendChild(head);
     if (!prog.unlocked) continue;
-    for (const l of famLines) {
-      const id = Object.keys(lines).find(k => lines[k] === l)!;
-      const lvl = lineLevel(s, id as LineId);
-      const gate = lineGate(id as LineId, best);
+    for (const [id, l] of famLines) {
+      const line = id as LineId;
+      const lvl = lineLevel(s, line);
+      const need = lineGate(line);
+      const open = best >= need;
       const card = document.createElement('div');
-      card.className = 'card' + (gate.unlocked ? '' : ' silhouette');
+      card.className = open ? 'card' : 'card silhouette';
       const nm = document.createElement('div');
       nm.className = 'card-name';
       nm.textContent = l.name;
       const ds = document.createElement('div');
       ds.className = 'card-desc';
-      ds.textContent = gate.unlocked ? l.desc : `Best ${gate.need} to unlock`;
+      ds.textContent = l.desc;
       const row = document.createElement('div');
-      row.className = 'lab-card-cur-next';
-      row.textContent = `Lv ${lvl}/${(RESEARCH_LINES as unknown as Record<string, { max: number }>)[id]?.max ?? '?'}`;
+      row.className = 'card-cur-next';
+      const maxed = lvl >= l.max;
+      row.textContent = maxed ? `Lv ${lvl}/${l.max} — complete` : `Lv ${lvl}/${l.max} → Lv ${lvl + 1}`;
       const buy = document.createElement('button');
-      buy.className = 'lab-card-buy';
+      buy.className = 'card-buy';
       buy.id = `btn-lab-${id}`;
-      buy.textContent = gate.unlocked ? `Research — ${researchCost(id as LineId, lvl)} cores` : 'Locked';
-      buy.disabled = !gate.unlocked;
+      const cost = researchCost(line, lvl, s);
+      buy.textContent = maxed ? 'Complete' : `Research — ${cost} cores`;
+      buy.disabled = maxed || (s.cores ?? 0) < cost;
       card.append(nm, ds, row, buy);
       host.appendChild(card);
     }
