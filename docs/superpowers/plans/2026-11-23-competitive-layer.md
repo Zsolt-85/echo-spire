@@ -283,7 +283,7 @@ git commit -m "feat(ghost): record and replay compact sim-time run traces"
 **Files:**
 - Modify: `src/game/render.ts:17,57` (call `drawGhost` from `drawSpace`)
 - Modify: `src/ui/hud.ts` (write `#hud-ghost` text)
-- Modify: `scripts/gen_index.py` (emit `<span class="pill">Echo <b id="hud-ghost">-</b></span>` in the topbar; emit a `#share` button in the game-over actions), then run `python scripts/gen_index.py`
+- Modify: `scripts/gen_index.py` (emit `<span class="pill">Echo <b id="hud-ghost">-</b></span>` in the topbar; emit a `#btn-share` button in the game-over actions), then run `python scripts/gen_index.py`
 - Modify: `scripts/gen_css.py` (append ghost-ring/share-button styles), then run `python scripts/gen_css.py`
 - Test: `tests/ghost-render.test.ts`
 
