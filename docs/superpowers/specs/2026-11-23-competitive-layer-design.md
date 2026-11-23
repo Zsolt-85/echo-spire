@@ -1,6 +1,6 @@
 # Echo Spire — Competitive Layer Design
 
-> Status: draft for review. Implements the market-competitiveness audit dated 2026-11-23.
+> Status: accepted. Implements the market-competitiveness audit dated 2026-11-23.
 > First implementation plan: `docs/superpowers/plans/2026-11-23-competitive-layer.md`.
 
 ## Intent / why
