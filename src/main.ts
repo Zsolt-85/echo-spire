@@ -147,7 +147,11 @@ function launch(opts:{daily?:boolean}={}):void{
   if(opts.daily){const now=new Date();startDaily(s,now);runDailyDate=dateKey(now);}
   else{startNormal(s);runDailyDate=undefined;}
   recomputeStats(s);s.shield=s.shieldMax??0;
-  if(skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;
+  // Daily runs share one seed and must start on the same wave for everyone;
+  // the opt-in wave skip is a normal-run convenience only.
+  // Daily runs share one seed and must start on the same wave for everyone;
+  // the opt-in wave skip is a normal-run convenience only.
+  if(!opts.daily&&skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;
   if(selectedGhost){s.ghostTrace=selectedGhost;s.ghostT=0;}
   hideOverlays();loop.setPaused(false);
   trace=startTrace(newRunId(),s.seed??0);
