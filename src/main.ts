@@ -9,6 +9,7 @@ import {clientFromEnv,entryHash,type RunEntry} from './api/leaderboard.js';
 import {startDaily,startNormal,dateKey} from './game/daily.js';
 import {startTrace,sampleTrace,type GhostTrace} from './game/ghost.js';
 import {renderBoard,renderDailyCard} from './ui/leaderboard.js';
+import {shareRunCard} from './ui/run-card.js';
 const cv=document.getElementById('game') as HTMLCanvasElement;
 const ctx=cv.getContext('2d')!;
 const mcv=document.getElementById('menu-ship') as HTMLCanvasElement|null;
@@ -33,6 +34,8 @@ const me=playerIdentity();
 let trace:GhostTrace|null=null;
 let runDailyDate:string|undefined;
 let selectedGhost:GhostTrace|null=null;
+let selectedGhostEntry:RunEntry|null=null;
+let lastSummary:RunSummary|null=null;
 if(typeof location!=='undefined'&&isFreshBoot(location.search))wipeSave();
 // v2 clean break (grind-economy plan Task 4): a v1 payload refuses to load
 // (version gate in loadGame), so flag it for the menu notice, then wipe the
@@ -95,7 +98,7 @@ function submitRun(sum:RunSummary):void{
   void client.submit({...base,hash:entryHash(base)},trace).catch(()=>{});
   trace=null;
 }
-function finishRun():void{const prev=best;const sum=endRun(s);submitRun(sum);persist();showGameOver(sum,prev);loop.setPaused(true);}
+function finishRun():void{const prev=best;const sum=endRun(s);lastSummary=sum;submitRun(sum);persist();showGameOver(sum,prev);loop.setPaused(true);}
 const loop=startLoop(cv,(dt)=>{if(getPhase()!=='run')return;tickSim(s,dt);if(trace)sampleTrace(trace,s);s.ghostT=(s.timeS??0)*1000;if(isDead(s))finishRun();},()=>{const now=performance.now();const dt=Math.min(0.1,(now-(lastDraw??now))/1000);lastDraw=now;ctx.save();ctx.scale(devicePixelRatio,devicePixelRatio);drawSpace(ctx,560,560,now,s,dt);ctx.restore();if(mctx&&getPhase()==='menu'){mctx.save();mctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);mctx.clearRect(0,0,innerWidth,innerHeight);drawMothership(mctx,innerWidth/2,innerHeight/2,{r:menuRingRadius(innerWidth,innerHeight),hpFrac:1,t:now,motion:defaultMotion('menu')});mctx.restore();}renderHud(s);});
 function wire(id:string,fn:()=>void){const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{fn();renderHud(s);});}
 wire('buy-dmg',()=>{buyUpgrade(s,'dmg');});
@@ -168,7 +171,8 @@ function refreshBoard():void{
       void client.trace(id).then(t=>{
         if(!t){setBoardStatus('That echo has no saved trace.');return;}
         selectedGhost=t;s.ghostTrace=t;s.ghostT=0;
-        const name=rows.find(r=>r.id===id)?.playerName??'Echo';
+        selectedGhostEntry=rows.find(r=>r.id===id)??null;
+        const name=selectedGhostEntry?.playerName??'Echo';
         setBoardStatus(`${name} armed — Wave ${t.finalWave}. Launch to race.`);
         renderHud(s);
       }).catch(()=>{});
@@ -200,6 +204,7 @@ wire('btn-wipe',()=>{
   }
 });
 wire('btn-relaunch',()=>{launch();});
+wire('btn-share',()=>{if(lastSummary)void shareRunCard(lastSummary,selectedGhostEntry);});
 wire('btn-menu-workshop',()=>{setMenuView('workshop');showMenu(best);loop.setPaused(true);});
 wire('tab-menu-workshop',()=>{setMenuView('workshop');});
 wire('tab-menu-academy',()=>{setMenuView('academy');});
