@@ -94,5 +94,24 @@ else:
     d = d.rstrip('\n') + '\n' + GHOST_CSS
     print('appended', len(GHOST_CSS), 'chars of ghost/share CSS')
 
+# Competitive layer Task 7: daily card + leaderboard board rows. Separate marker
+# block so earlier generated rules (including ghost/share) are never dropped.
+BOARD_MARK = '/* ===== DAILY / BOARD ===== */'
+if BOARD_MARK in d:
+    print('daily/board styles already present; nothing to do')
+else:
+    BOARD_CSS = '''
+/* ===== DAILY / BOARD ===== */
+.daily-meta{font-family:'JetBrains Mono',monospace;font-size:12px;color:#c4b5fd;min-height:16px;}
+.board-head{font-size:12px;letter-spacing:2px;color:#94a3b8;margin:18px 0 0;}
+.board-host{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.board-row{min-height:46px;padding:10px 14px;text-align:left;background:rgba(255,255,255,.05);color:#e2e8f0;border:1px solid rgba(255,255,255,.14);border-radius:10px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:13px;transition:background 200ms ease,border-color 200ms ease;}
+.board-row:hover{border-color:#c4b5fd;background:rgba(167,139,250,.10);}
+.board-row:focus-visible{outline:2px solid #c4b5fd;outline-offset:2px;}
+#board-status{min-height:18px;}
+'''
+    d = d.rstrip('\n') + '\n' + BOARD_CSS
+    print('appended', len(BOARD_CSS), 'chars of daily/board CSS')
+
 with io.open(p, 'w', encoding='utf-8', newline='\n') as f:
     f.write(d)

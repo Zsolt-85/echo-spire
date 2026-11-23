@@ -77,6 +77,7 @@ html = f'''<!doctype html>
         <button id="tab-menu-home" class="on">Home</button>
         <button id="tab-menu-workshop">Workshop</button>
         <button id="tab-menu-academy">Laboratory</button>
+        <button id="tab-menu-board">Board</button>
       </nav>
 
       <section id="menu-view-home">
@@ -86,6 +87,12 @@ html = f'''<!doctype html>
             <p class="hub-card-desc">Send the mothership out. Defend the core through escalating waves until your hull hits zero.</p>
             <button id="btn-launch-secondary" class="hub-btn">Launch Mothership</button>
             <button id="btn-skip" class="hub-btn ghost" hidden>Start at wave 10</button>
+          </div>
+          <div class="hub-card daily-card" id="daily-card">
+            <div class="hub-card-title">Daily Run</div>
+            <p class="hub-card-desc">One shared UTC seed for every pilot. Same spawns, same rifts — race the echoes.</p>
+            <div class="daily-meta" id="daily-meta"></div>
+            <button id="btn-launch-daily" class="hub-btn">Launch Daily Run</button>
           </div>
           <div class="hub-card">
             <div class="hub-card-title">Your Fleet</div>
@@ -115,6 +122,12 @@ html = f'''<!doctype html>
         <p class="teaser" id="academy-teaser"></p>
         <h3 class="lab-subhead">Completed research</h3>
         <div class="lab-history" id="lab-history"></div>
+      </section>
+
+      <section id="menu-view-board" hidden>
+        <h3 class="board-head">Echo Board</h3>
+        <p class="teaser" id="board-status" role="status">Pick an echo to race it on your next run.</p>
+        <div class="board-host" id="board-list"></div>
       </section>
 
       <button id="btn-back" class="btn-back" hidden>&larr; Back to Home</button>

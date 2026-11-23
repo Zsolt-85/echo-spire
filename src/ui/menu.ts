@@ -16,16 +16,17 @@ function render(): void {
   show('menu-view-home', _menuView === 'home');
   show('menu-view-workshop', _menuView === 'workshop');
   show('menu-view-academy', _menuView === 'academy');
+  show('menu-view-board', _menuView === 'board');
   show('btn-back', _menuView !== 'home');
-  for (const [id, on] of [['tab-menu-home', _menuView === 'home'], ['tab-menu-workshop', _menuView === 'workshop'], ['tab-menu-academy', _menuView === 'academy']] as const) {
+  for (const [id, on] of [['tab-menu-home', _menuView === 'home'], ['tab-menu-workshop', _menuView === 'workshop'], ['tab-menu-academy', _menuView === 'academy'], ['tab-menu-board', _menuView === 'board']] as const) {
     const b = el(id); if (b) b.classList.toggle('on', on);
   }
 }
-export type MenuView = 'home' | 'workshop' | 'academy';
+export type MenuView = 'home' | 'workshop' | 'academy' | 'board';
 let _menuView: MenuView = 'home';
 export function menuView(): MenuView { return _menuView; }
 export function setMenuView(v: MenuView): void {
-  if (v === 'home' || v === 'workshop' || v === 'academy') { _menuView = v; render(); }
+  if (v === 'home' || v === 'workshop' || v === 'academy' || v === 'board') { _menuView = v; render(); }
 }
 export function showMenu(best: number): void {
   toMenu();
