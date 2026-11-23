@@ -1,6 +1,3 @@
-// Leaderboard stub (spec §4, §10): no backend in v1, upload interface only.
-export type Entry = { playerId: string; best: number; hash: string };
-export async function upload(e: Entry): Promise<{ ok: boolean }> {
-  console.info('stub upload', e);
-  return { ok: true };
-}
+// Compatibility shim: the offline-first leaderboard client now lives in
+// ./leaderboard.js. Kept as a re-export so legacy import paths still resolve.
+export * from './leaderboard.js';
