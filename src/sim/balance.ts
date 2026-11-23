@@ -156,3 +156,7 @@ export const LINE_SPECS:LineSpec[]=[
   {id:'remnant',fam:'echoes',effect:'echoDps',per:0.05,max:30,timeMult:1.2,costDiv:1,minBest:250,name:'Remnant',desc:'+5% echo damage per level. Best 250 to unlock.'},
   // exotics (gate 400)
 ];
+// Ghost trace recorder (competitive layer): sim-time sample cadence and byte
+// cap for compact, shareable run traces. Canonical home — feature code consumes.
+export const GHOST_SAMPLE_MS = 500;
+export const GHOST_MAX_BYTES = 65536;
