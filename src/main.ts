@@ -152,8 +152,6 @@ function launch(opts:{daily?:boolean}={}):void{
   recomputeStats(s);s.shield=s.shieldMax??0;
   // Daily runs share one seed and must start on the same wave for everyone;
   // the opt-in wave skip is a normal-run convenience only.
-  // Daily runs share one seed and must start on the same wave for everyone;
-  // the opt-in wave skip is a normal-run convenience only.
   if(!opts.daily&&skipOn&&trainingLevel(s,'command')>=WAVESKIP_CMD)s.wave=10;
   if(selectedGhost){s.ghostTrace=selectedGhost;s.ghostT=0;}
   hideOverlays();loop.setPaused(false);

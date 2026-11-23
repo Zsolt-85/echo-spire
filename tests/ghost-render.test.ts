@@ -44,7 +44,7 @@ describe('ghost rendering', () => {
     s.ghostT = 0;
     const { ctx, calls } = makeCtx();
     drawSpace(ctx, 560, 560, 1000, s, 0.016);
-    expect(calls.some(c => c.op === 'translate' && c.args[0] === 490 && c.args[1] === 490)).toBe(true);
+    expect(calls.some(c => c.op === 'translate' && c.args[0] === 490 && c.args[1] === 470)).toBe(true);
     expect(calls.some(c => c.op === 'arc' && c.args[2] === 28 &&
       Math.abs((c.args[4] as number) - Math.PI) < 1e-9)).toBe(true);
   });
@@ -53,14 +53,14 @@ describe('ghost rendering', () => {
     const bare = freshState();
     const noTrace = makeCtx();
     drawSpace(noTrace.ctx, 560, 560, 1000, bare, 0.016);
-    expect(noTrace.calls.some(c => c.op === 'translate' && c.args[0] === 490 && c.args[1] === 490)).toBe(false);
+    expect(noTrace.calls.some(c => c.op === 'translate' && c.args[0] === 490 && c.args[1] === 470)).toBe(false);
 
     const s = freshState();
     s.ghostTrace = trace();
     s.ghostT = 9999; // past the trace: ghostAt returns null
     const outOfRange = makeCtx();
     drawSpace(outOfRange.ctx, 560, 560, 1000, s, 0.016);
-    expect(outOfRange.calls.some(c => c.op === 'translate' && c.args[0] === 490 && c.args[1] === 490)).toBe(false);
+    expect(outOfRange.calls.some(c => c.op === 'translate' && c.args[0] === 490 && c.args[1] === 470)).toBe(false);
   });
 
   it('keeps the ghost static (no shake) under prefers-reduced-motion', () => {

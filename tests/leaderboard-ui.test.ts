@@ -111,3 +111,22 @@ describe('daily launch parity', () => {
     expect(wave()).toBe('1');
   });
 });
+
+describe('demo row arms a raceable ghost', () => {
+  it('clicking a seeded demo row arms a trace that renders after launch', async () => {
+    await import('../src/main.js'); // module singleton: boot already ran on first import
+    const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+    await flush(); // let the boot-time client.list().then(renderBoard) settle
+
+    const host = document.getElementById('board-list')!;
+    const row = (host.children as unknown as FakeEl[]).find(c => c.textContent.includes('Vango'))!;
+    expect(row).toBeTruthy();
+    row.dispatchEvent(new MouseEvent('click'));
+    await flush(); // let client.trace(id).then(...) arm the ghost
+
+    expect(document.getElementById('board-status')!.textContent).toContain('armed — Wave 60');
+    // Launch re-applies the armed ghost; a filled Echo pill proves s.ghostTrace was set.
+    document.getElementById('btn-launch')!.dispatchEvent(new MouseEvent('click'));
+    expect(document.getElementById('hud-ghost')!.textContent).not.toBe('-');
+  });
+});

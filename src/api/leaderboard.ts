@@ -60,19 +60,65 @@ export function entryHash(e: Omit<RunEntry, 'hash'>): string {
 
 // Static demo rows so the board is never empty on first launch. These are
 // sample display data (names pinned by spec), not gameplay tuning values.
+// Every row carries a small synthetic trace so picking it arms a raceable
+// ghost with zero backend configured.
 function demoEntries(): RunEntry[] {
   const rows: Omit<RunEntry, 'hash'>[] = [
     { id: 'demo-vango', playerId: 'demo-vango', playerName: 'Vango',
-      best: 60, kills: 1200, durationMs: 900000, seed: 101, submittedAt: 1, hasTrace: false },
+      best: 60, kills: 1200, durationMs: 900000, seed: 101, submittedAt: 1, hasTrace: true },
     { id: 'demo-nyx', playerId: 'demo-nyx', playerName: 'Nyx-7',
-      best: 52, kills: 980, durationMs: 780000, seed: 202, submittedAt: 2, hasTrace: false },
+      best: 52, kills: 980, durationMs: 780000, seed: 202, submittedAt: 2, hasTrace: true },
     { id: 'demo-wall', playerId: 'demo-wall', playerName: 'The Wall',
-      best: 48, kills: 860, durationMs: 720000, seed: 303, submittedAt: 3, hasTrace: false },
+      best: 48, kills: 860, durationMs: 720000, seed: 303, submittedAt: 3, hasTrace: true },
   ];
   return rows.map(r => ({ ...r, hash: entryHash(r) }));
 }
 
+// A tiny deterministic trace that ramps from wave 1 to the row's best wave.
+// Samples use sim time and decode cleanly, so seeded rows are real ghosts
+// rather than dead-end stat lines.
+function demoTrace(e: RunEntry): GhostTrace {
+  const midMs = Math.round(e.durationMs / 2);
+  return {
+    v: 1,
+    runId: `demo-trace-${e.id}`,
+    seed: e.seed,
+    samples: [
+      [0, 1, 1, 12, 0],
+      [midMs, Math.max(1, Math.round(e.best * 0.6)), 0.7,
+        Math.round(12 + e.kills * 0.3), Math.round(e.kills * 0.4)],
+      [e.durationMs, e.best, 0.35, Math.round(12 + e.kills * 0.8), e.kills],
+    ],
+    finalWave: e.best,
+    finalKills: e.kills,
+    durationMs: e.durationMs,
+  };
+}
+
 type Board = { entries: RunEntry[]; traces: Record<string, string> };
+
+function seededBoard(): Board {
+  const entries = demoEntries();
+  const traces: Record<string, string> = {};
+  for (const e of entries) traces[e.id] = encodeTrace(demoTrace(e));
+  return { entries, traces };
+}
+
+// Older local boards were seeded with hasTrace:false and no traces. Backfill
+// the demo ids so returning players can race them too; never drop submissions.
+function backfillDemo(b: Board): Board {
+  const demos = demoEntries();
+  const byId = new Map(demos.map(e => [e.id, e]));
+  const entries = b.entries.map(r => {
+    if (!byId.has(r.id)) return r;
+    const fixed: Omit<RunEntry, 'hash'> = { ...r, hasTrace: true };
+    return { ...fixed, hash: entryHash(fixed) };
+  });
+  for (const d of demos) if (!entries.some(r => r.id === d.id)) entries.push(d);
+  const traces: Record<string, string> = { ...b.traces };
+  for (const d of demos) if (!traces[d.id]) traces[d.id] = encodeTrace(demoTrace(d));
+  return { entries, traces };
+}
 
 function readBoard(): Board {
   const s = store();
@@ -82,11 +128,11 @@ function readBoard(): Board {
       const parsed = JSON.parse(raw) as Partial<Board> | null;
       if (parsed && Array.isArray(parsed.entries)) {
         const traces = parsed.traces && typeof parsed.traces === 'object' ? parsed.traces : {};
-        return { entries: parsed.entries, traces };
+        return backfillDemo({ entries: parsed.entries, traces });
       }
     }
   } catch { /* corrupt board — reseed below */ }
-  const seeded: Board = { entries: demoEntries(), traces: {} };
+  const seeded: Board = seededBoard();
   try { s.setItem(BOARD_KEY, JSON.stringify(seeded)); } catch { /* ignore quota errors */ }
   return seeded;
 }

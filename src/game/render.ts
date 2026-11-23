@@ -133,6 +133,6 @@ export function drawSpace(ctx:CanvasRenderingContext2D,w:number,h:number,t:numbe
   // shake is suppressed entirely).
   if(s?.ghostTrace){
     const ghost=ghostAt(s.ghostTrace,s.ghostT ?? 0);
-    if(ghost)drawGhost(ctx,w-70,h-70,ghost,t);
+    if(ghost)drawGhost(ctx,w-70,h-90,ghost,t);
   }
 }
