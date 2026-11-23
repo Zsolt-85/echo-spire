@@ -1,16 +1,16 @@
 """Append menu-hub / overlay / lab styles + restore reduced-motion block.
-Safe to run repeatedly (idempotent marker check)."""
+Safe to run repeatedly (idempotent marker checks, one marker per feature block)."""
 import io, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 p = os.path.join(ROOT, 'src/style.css')
 d = io.open(p, encoding='utf-8').read()
+
 MARK = '/* ===== MENU HUB ===== */'
 if MARK in d:
-    print('already appended; nothing to do')
-    raise SystemExit(0)
-
-CSS = '''
+    print('menu hub styles already present; skipping base block')
+else:
+    CSS = '''
 /* ===== MENU HUB ===== */
 .brand{min-width:0;}
 .menu-tabs{display:flex;gap:8px;margin:18px 0 0;}
@@ -75,7 +75,24 @@ CSS = '''
   .hub-btn:hover{transform:none;}
 }
 '''
+    d = d.rstrip('\n') + '\n' + CSS
+    print('appended', len(CSS), 'chars of CSS')
+
+# Competitive layer: echo HUD pill + share button. Kept in its own marker block
+# so later tasks can extend this generator without dropping these rules.
+GHOST_MARK = '/* ===== GHOST / SHARE ===== */'
+if GHOST_MARK in d:
+    print('ghost/share styles already present; nothing to do')
+else:
+    GHOST_CSS = '''
+/* ===== GHOST / SHARE ===== */
+#hud-ghost{color:#c4b5fd;font-weight:700;}
+#btn-share{background:linear-gradient(90deg,#8b5cf6,#a78bfa);border-color:transparent;color:#fff;box-shadow:0 0 14px rgba(167,139,250,.4);}
+#btn-share:hover{box-shadow:0 0 22px rgba(167,139,250,.6);}
+#btn-share:focus-visible{outline:2px solid #c4b5fd;outline-offset:2px;}
+'''
+    d = d.rstrip('\n') + '\n' + GHOST_CSS
+    print('appended', len(GHOST_CSS), 'chars of ghost/share CSS')
 
 with io.open(p, 'w', encoding='utf-8', newline='\n') as f:
-    f.write(d.rstrip('\n') + '\n' + CSS)
-print('appended', len(CSS), 'chars of CSS')
+    f.write(d)

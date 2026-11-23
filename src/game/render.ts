@@ -1,6 +1,7 @@
 import {SHIP_PATHS} from './ships.js';
 import {drawMothership, defaultMotion} from './mothership.js';
 import {RIFT_POS} from './rifts.js';
+import {ghostAt} from './ghost.js';
 import type {GameState} from './state.js';
 const KIND_STYLE:Record<string,string>={dart:'#7dd3fc',bomber:'#f0abfc',hex:'#a78bfa'};
 const CACHE_STYLE='#ffd700';
@@ -8,6 +9,23 @@ let trauma=0;
 function reducedMotion():boolean{
   try{if(typeof matchMedia!=='undefined')return matchMedia('(prefers-reduced-motion: reduce)').matches;}catch{/* ssr */}
   return false;
+}
+/** The raced echo: a static, translucent violet arc in the free arena corner.
+ *  No shake or time-based motion — it is drawn outside drawSpace's shake
+ *  transform, so prefers-reduced-motion is respected automatically. */
+export function drawGhost(ctx:CanvasRenderingContext2D,x:number,y:number,sample:{hullFrac:number;dmg:number},t:number):void{
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.globalAlpha=0.35;
+  ctx.strokeStyle='#a78bfa';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.arc(0,0,28,0,Math.PI*2*Math.max(0,Math.min(1,sample.hullFrac)));
+  ctx.stroke();
+  ctx.restore();
+  // Explicit reset: restore() is a no-op on lightweight stub contexts used in
+  // tests, and the echo must never leak its alpha into the next frame.
+  ctx.globalAlpha=1;
 }
 export function impactFeedback(s:GameState|null|undefined,cx:number,cy:number):{hitFlash:number;hitAngle:number}{
   const e=s?.fx?.find(e=>e.kind==='flash');
@@ -110,4 +128,11 @@ export function drawSpace(ctx:CanvasRenderingContext2D,w:number,h:number,t:numbe
   if(s&&s.ships){for(const sh of s.ships){if(sh.hp<=0&&Math.random()<0.3){pushFx2({kind:'spark',x:sh.x,y:sh.y,tx:sh.x,ty:sh.y,ttl:0.35},s as GameState);}}}
   ctx.restore();
   ctx.globalAlpha=1;
+  // Echo ring last, outside the shake transform: it stays pinned to the
+  // corner even when the arena shakes (and under reduced motion, where the
+  // shake is suppressed entirely).
+  if(s?.ghostTrace){
+    const ghost=ghostAt(s.ghostTrace,s.ghostT ?? 0);
+    if(ghost)drawGhost(ctx,w-70,h-70,ghost,t);
+  }
 }

@@ -131,6 +131,7 @@ html = f'''<!doctype html>
     <span class="pill">Shards <b id="hud-shards">0</b></span>
     <span class="pill">Income <b id="hud-income">-</b></span>
     <span class="pill">Wave intel <b id="hud-intel">-</b></span>
+    <span class="pill">Echo <b id="hud-ghost">-</b></span>
   </div>
 
   <div id="layout">
@@ -153,7 +154,7 @@ html = f'''<!doctype html>
         <button id="btn-speed-2">x2</button>
         <button id="btn-speed-4">x4</button>
         <button id="btn-speed-8" hidden>x8</button>
-        <button id="btn-retreat">Retreat</button>
+        <button id="btn-retreat">End Run</button>
         <button id="btn-collapse">Collapse</button>
       </div>
       <div id="ult-bar" aria-label="Ultimate charge">
@@ -181,6 +182,7 @@ html = f'''<!doctype html>
       <div class="over-actions">
         <button id="btn-relaunch" class="hub-btn">Relaunch</button>
         <button id="btn-over-menu" class="hub-btn ghost">Main menu</button>
+        <button id="btn-share" class="hub-btn ghost">Share run</button>
       </div>
     </div>
   </div>

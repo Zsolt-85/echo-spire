@@ -4,6 +4,7 @@ import {applyAugment} from '../game/rifts.js';
 import {WORKSHOP_STATS, workshopCost, type WorkshopStat} from '../state/workshop.js';
 import {menuView} from '../ui/menu.js';
 import {waveIntel} from '../game/spawning.js';
+import {ghostAt} from '../game/ghost.js';
 import {FORGE_CATS, WS_CATS, getForgeTab, getWsTab} from './tabs.js';
 import {ULT_COST, ULT_CHARGE_MAX, fluxForKill, WAVESKIP_CMD, WS_BATCH_COST, type UltId} from '../sim/balance.js';
 import {ULTS, canFire} from '../game/ultimates.js';
@@ -44,6 +45,8 @@ export function renderHud(s: GameState): void {
   const intel = waveIntel(s.wave);
   const hp = intel.hp >= 10000 ? (intel.hp / 1000).toFixed(1) + 'K' : String(intel.hp);
   txt('hud-intel', `${intel.count} ships • ${hp} HP • ${intel.dmg} dmg`);
+  const ghost = s.ghostTrace ? ghostAt(s.ghostTrace, s.ghostT ?? 0) : null;
+  txt('hud-ghost', ghost ? `Wave ${Math.round(ghost.wave)} · ${Math.round(ghost.kills)} kills` : '-');
 
   if (mv === 'workshop') {
     const w = (s as unknown as { workshop?: Record<string, number> }).workshop ?? {};
