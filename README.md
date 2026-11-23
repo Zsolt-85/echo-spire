@@ -24,7 +24,7 @@ Open the printed URL (usually http://localhost:5173). Keep that terminal open wh
 1. **Menu** — Launch Mothership, Launch Daily Run (the shared UTC-seeded course), or spend cores in the Workshop first. The Board tab lists top runs; pick one to race its ghost.
 2. **Run** — Enemies trickle in from shifting rifts (every 3rd ship strafes instead of bee-lining). Your guns fire automatically; spend Flux on Forge upgrades mid-fight. Every 10 waves pick 1-of-3 Augments. Rift Surges spawn golden Cache Ships worth Void Essence.
 3. **Death at hull 0** — Run summary (wave, kills, Flux, Essence, time, cores earned) → Relaunch fresh or back to Menu. Collapse at wave 50+ for bonus cores.
-4. **Meta** — Cores buy permanent Workshop tracks; the Training Academy researches in real time (offline gains capped at 12h); Echo ghost replays your best run beside you.
+4. **Meta** — Cores buy permanent Workshop tracks; the Training Academy researches in real time (offline gains capped at 12h); an Echo ghost can be armed from the Board to replay a run beside you.
 
 ## The ship
 
