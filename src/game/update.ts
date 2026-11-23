@@ -1,5 +1,5 @@
 import type {GameState,Ship} from './state.js';import {isDead} from './lifecycle.js';import {spawnWave} from './spawning.js';import {enemyHp,enemyDmg,fluxForKill,costFor,ULT_OD_MULT,BASE,AUTOFORGE_ENG,SHARD_W_BOSS} from '../sim/balance.js';import {ultChargeForKill} from './ultimates.js';import {maybeSpawnSurge,offerAugment,RIFT_POS,riftIndexForWave} from './rifts.js';export {freshState} from './state.js';export {spawnWave} from './spawning.js';
-import {trainingLevel,labFluxMult} from '../state/training.js';import {buyUpgrade,type Stat} from '../ui/panel.js';
+import {trainingLevel,labFluxMult} from '../state/training.js';import {buyUpgrade,type Stat} from '../ui/panel.js';import {nextRandom} from '../sim/rng.js';
 // --- Mega-labs Task 2 mechanics (all guarded: zero-cost when zero) ---
 const CRIT_BASE=2; // crits deal (2 + s.critMult)x
 const SPLASH_PCT=0.3; // splash deals 30% of s.dmg, single hop, no chain
@@ -26,7 +26,7 @@ function splashFrom(s:GameState,x:number,y:number,fluxMult:number,essenceMult:nu
   if(slain.length)s.ships=s.ships.filter(x=>x.hp>0);
 }
 // Bonus surge roll: cacheLuck adds a luck-based extra cache ship on waves
-// that can host surges (>=10). luck<=0 short-circuits before Math.random so
+// that can host surges (>=10). luck<=0 short-circuits before the RNG roll so
 // zero-luck runs keep the scheduled-only behavior AND the RNG stream.
 function spawnBonusSurge(s:GameState):void{
   const rp=RIFT_POS[(riftIndexForWave(s.wave)+1)%RIFT_POS.length];
@@ -46,10 +46,10 @@ export function tickSim(s:GameState,dt:number){
   const dmgEff=s.dmg;
   const pushFx=(e:{kind:'beam'|'spark'|'flash';x:number;y:number;tx:number;ty:number;ttl:number})=>{s.fx!.push(e);if(s.fx!.length>60)s.fx!.splice(0,s.fx!.length-60);};
   const spark=(x:number,y:number)=>pushFx({kind:'spark',x,y,tx:x,ty:y,ttl:0.3});
-  if((s._queue??0)>0){s._timer=(s._timer??0)-dt;const gap=Math.max(0.15,1.1-s.wave*0.008);while((s._timer??0)<=0&&(s._queue??0)>0){const id=s.nextId;const a=id*2.399963229728653;const kind=id%7===6?'hex':id%3===2?'bomber':'dart';s.ships.push({id:s.nextId++,kind,x:280+Math.cos(a)*260,y:280+Math.sin(a)*260,hp:enemyHp(s.wave),dmg:enemyDmg(s.wave),speed:22+s.wave*0.4,essence:0,behavior:id%3===2?'roamer':'seeker',wander:Math.random()*Math.PI*2});s._queue=(s._queue??1)-1;s._timer=(s._timer??0)+gap;}}
+  if((s._queue??0)>0){s._timer=(s._timer??0)-dt;const gap=Math.max(0.15,1.1-s.wave*0.008);while((s._timer??0)<=0&&(s._queue??0)>0){const id=s.nextId;const a=id*2.399963229728653;const kind=id%7===6?'hex':id%3===2?'bomber':'dart';s.ships.push({id:s.nextId++,kind,x:280+Math.cos(a)*260,y:280+Math.sin(a)*260,hp:enemyHp(s.wave),dmg:enemyDmg(s.wave),speed:22+s.wave*0.4,essence:0,behavior:id%3===2?'roamer':'seeker',wander:nextRandom(s)*Math.PI*2});s._queue=(s._queue??1)-1;s._timer=(s._timer??0)+gap;}}
   if(s.ships.length===0&&(s._queue??0)<=0){spawnWave(s);maybeSpawnSurge(s);
     const luck=s.cacheLuck??0;
-    if(s.wave>=10&&luck>0&&Math.random()<Math.min(1,luck))spawnBonusSurge(s);
+    if(s.wave>=10&&luck>0&&nextRandom(s)<Math.min(1,luck))spawnBonusSurge(s);
     if(s.wave>=10&&s.wave%10===0&&s._augmentWave!==s.wave&&!s.pendingAugment){s.pendingAugment=offerAugment();s._augmentWave=s.wave;}}
   // mothership fire: nearest in range, volley/crit/bounce
   s.ships.sort((a,b)=>((a.x-280)**2+(a.y-280)**2)-((b.x-280)**2+(b.y-280)**2));
@@ -65,7 +65,7 @@ export function tickSim(s:GameState,dt:number){
       if(t.hp<=0)continue;
       if((t.x-280)**2+(t.y-280)**2>s.range**2)continue;
       let dmg=dmgEff;
-      if(Math.random()<(s.critCh??0))dmg*=critMul(s);
+      if(nextRandom(s)<(s.critCh??0))dmg*=critMul(s);
       t.hp-=dmg*bossMul(s,t);hits++;
       pushFx({kind:'beam',x:280,y:280,tx:t.x,ty:t.y,ttl:0.12});
       if(t.hp<=0){spark(t.x,t.y);creditKill(s,t,fluxMult,essenceMult);splashFrom(s,t.x,t.y,fluxMult,essenceMult,spark);
